@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "okf-agent"
+version = "0.1.0"
+description = "Repository-owned knowledge maintenance for coding agents"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["fastmcp>=2.0"]
+treesitter = ["tree-sitter>=0.22"]
+
+[project.scripts]
+okf-agent = "okf_agent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["okf_agent*"]
