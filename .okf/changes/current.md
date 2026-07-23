@@ -4,13 +4,14 @@
 # Current change context
 
 <!-- okf:generated:start -->
-Updated: 2026-07-23T08:22:05.615416+00:00
+Updated: 2026-07-23T09:29:23.309634+00:00
 
 Changed files:
 - `README.md`
-- `okf_agent/cli.py`
-- `okf_agent/onboarding.py`
-- `tests/test_onboarding.py`
+- `okf_agent/enforcement.py`
+- `tests/test_lifecycle.py`
+<!-- okf:generated:end -->
+<!-- okf:generated:end -->
 <!-- okf:generated:end -->
 <!-- okf:generated:end -->
 <!-- okf:generated:end -->
