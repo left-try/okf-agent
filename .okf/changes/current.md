@@ -1,17 +1,20 @@
 # Current
 
 <!-- okf:generated:start -->
-# Current change context
-
-<!-- okf:generated:start -->
-Updated: 2026-07-23T09:29:23.309634+00:00
-
 Changed files:
 - `README.md`
+- `okf_agent/cli.py`
+- `okf_agent/discovery.py`
 - `okf_agent/enforcement.py`
+- `okf_agent/knowledge.py`
+- `okf_agent/lifecycle.py`
+- `okf_agent/validation.py`
+- `okf_agent/watcher.py`
 - `tests/test_lifecycle.py`
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
+- `tests/test_onboarding.py`
+- `tests/test_docs.py`
+- `tests/test_web.py`
+- `okf_agent/docs.py`
+- `okf_agent/web.py`
+- `docs/superpowers/plans/2026-10-04-reliable-repository-knowledge.md`
 <!-- okf:generated:end -->
