@@ -19,7 +19,7 @@ alwaysApply: true
 HOOKS = {
     "post-checkout": "okf-agent index . || exit 0\n",
     "post-merge": "okf-agent index . || exit 0\n",
-    "pre-commit": "okf-agent update . || exit 0\n",
+    "pre-commit": "okf-agent update .\n",
     "pre-push": "okf-agent validate .\n",
 }
 

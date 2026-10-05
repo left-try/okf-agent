@@ -30,7 +30,7 @@ After installing the CLI, users run this once inside each repository:
 okf-agent init .
 ```
 
-It creates `.okf/`, builds the local index, installs Git hooks where they are safe to install, and writes native repository instructions for each supported client:
+It creates `.okf/`, builds the local index and local wiki, installs Git hooks where they are safe to install, and writes native repository instructions for each supported client:
 
 - `AGENTS.md` for Codex and generic agents
 - `CLAUDE.md` and `.claude/rules/okf.md` for Claude Code
@@ -39,6 +39,25 @@ It creates `.okf/`, builds the local index, installs Git hooks where they are sa
 
 Existing instruction files are preserved and receive one OKF protocol block. Existing non-OKF Git hooks are left untouched.
 
+The wiki is generated into `.okf-index/site/`, which is local and rebuildable. It has a page list, project facts, copies of `.okf/` Markdown pages, and simple text search. Start the read-only local web UI with:
+
+```powershell
+okf-agent docs serve .
+```
+
+It binds to `127.0.0.1` by default. To rebuild or check the generated pages explicitly:
+
+```powershell
+okf-agent docs build .
+okf-agent docs check .
+```
+
+`okf-agent update .` refreshes repository facts and the SQLite index. If the local wiki has already been created, `update` rebuilds it too. `okf-agent validate .` checks for stale wiki output, and the generated pre-push hook runs validation. A stale or corrupted generated site makes validation fail; rebuild it with `okf-agent docs build .`.
+
+The generated site is not published or pushed to GitHub. `.okf/` remains the source of truth. The site includes deterministic project facts and mirrors curated Markdown pages; it does not invent architectural explanations.
+
+The source index currently scans `.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.go`, `.rs`, `.java`, `.cs`, `.rb`, and `.php` files. It also indexes `pyproject.toml`, `requirements.txt`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, `Dockerfile`, `docker-compose.yml`, and `.env.example`. Language facts are inferred from Python, Node.js, Go, Rust, and Maven manifests; the current framework hint is Node.js for `package.json`.
+
 For Codex users, the optional global installer activates OKF automatically for future repository tasks:
 
 ```powershell
@@ -46,6 +65,8 @@ okf-agent install
 ```
 
 Restart Codex afterwards. For Claude Code, Cursor, and Gemini CLI, the project-native files created by `init` are loaded whenever the user opens that repository.
+
+`okf-agent run <agent>` prepares the repository and can launch the named client. It writes the project-native instructions, but the computed context in its JSON payload is not injected into the launched client. Configure the optional MCP server in a client to expose context retrieval and update tools directly.
 
 ## Pasteable Agent Setup Prompt
 

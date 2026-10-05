@@ -36,12 +36,36 @@ def replace_generated(document: Path, body: str) -> None:
         )
     text = document.read_text(encoding="utf-8")
     replacement = f"{GENERATED_START}\n{body.rstrip()}\n{GENERATED_END}"
-    pattern = re.escape(GENERATED_START) + r".*?" + re.escape(GENERATED_END)
-    if not re.search(pattern, text, flags=re.S):
+    marker = re.compile(re.escape(GENERATED_START) + "|" + re.escape(GENERATED_END))
+    matches = list(marker.finditer(text))
+    if not matches:
         text += "\n\n" + replacement + "\n"
     else:
-        text = re.sub(pattern, replacement, text, flags=re.S)
-    document.write_text(text, encoding="utf-8")
+        pieces: list[str] = []
+        cursor = 0
+        active = False
+        for match in matches:
+            token = match.group(0)
+            if token == GENERATED_START:
+                if not active:
+                    pieces.append(text[cursor:match.start()])
+                    pieces.append(f"{GENERATED_START}\n{body.rstrip()}\n")
+                    active = True
+            elif active:
+                # Drop the previous generated body, keep only curated text
+                # outside the machine-owned markers.
+                pieces.append(GENERATED_END)
+                active = False
+            else:
+                pieces.append(text[cursor:match.start()])
+            cursor = match.end()
+        if not active:
+            pieces.append(text[cursor:])
+        if active:
+            pieces.append(GENERATED_END)
+        text = "".join(pieces)
+    if text != document.read_text(encoding="utf-8"):
+        document.write_text(text, encoding="utf-8")
 
 
 def record_decision(root: Path, title: str, rationale: str, sources: list[str] | None = None) -> Path:
