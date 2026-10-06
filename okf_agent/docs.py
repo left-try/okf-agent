@@ -21,6 +21,9 @@ def _source_files(root: Path) -> list[Path]:
     manifest = bundle / "manifest.yaml"
     if manifest.is_file() and not manifest.is_symlink():
         paths.append(manifest)
+    workflow_config = bundle / "workflows" / "config.json"
+    if workflow_config.is_file() and not workflow_config.is_symlink():
+        paths.append(workflow_config)
     paths.extend(path for path in files(root) if path.is_file() and not path.is_symlink())
     unique = {path.relative_to(root).as_posix(): path for path in paths}
     return [unique[name] for name in sorted(unique)]

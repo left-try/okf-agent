@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "enabled_profiles": ["sdd", "tdd", "gtdd"],
+  "selection": "adaptive",
+  "default_rigor": "standard",
+  "defaults": {
+    "feature": ["sdd", "tdd"],
+    "bugfix": ["tdd"],
+    "hotfix": ["tdd"],
+    "docs": [],
+    "tests": [],
+    "refactor": [],
+    "maintenance": []
+  },
+  "gtdd": {
+    "execution": "recommend-only",
+    "fallback": "sequential-adversarial-review"
+  }
+}

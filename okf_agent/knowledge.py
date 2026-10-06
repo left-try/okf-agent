@@ -3,15 +3,17 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from collections.abc import Sequence
 
 from .paths import REQUIRED_FILES, index_dir, okf_dir
+from .workflows import install_profiles
 
 
 GENERATED_START = "<!-- okf:generated:start -->"
 GENERATED_END = "<!-- okf:generated:end -->"
 
 
-def initialize(root: Path) -> list[Path]:
+def initialize(root: Path, profiles: Sequence[str] | None = None) -> list[Path]:
     created: list[Path] = []
     bundle = okf_dir(root)
     for relative, template in REQUIRED_FILES.items():
@@ -22,6 +24,9 @@ def initialize(root: Path) -> list[Path]:
             created.append(target)
     for folder in ("decisions", "changes"):
         (bundle / folder).mkdir(parents=True, exist_ok=True)
+    if profiles:
+        profile_result = install_profiles(root, profiles)
+        created.extend(root / path for path in profile_result.created)
     index_dir(root).mkdir(parents=True, exist_ok=True)
     return created
 

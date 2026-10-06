@@ -38,6 +38,25 @@ class DocsTests(unittest.TestCase):
 
             self.assertEqual(after, before)
 
+    def test_workflow_pages_are_mirrored_and_config_changes_stale_the_wiki(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            initialize(root, profiles=("sdd",))
+
+            build_docs(root)
+            config = root / ".okf" / "workflows" / "config.json"
+            policy = config.read_text(encoding="utf-8")
+            config.write_text(policy.replace('"standard"', '"strict"', 1), encoding="utf-8")
+
+            stale = check_docs(root)
+            self.assertFalse(stale["ok"])
+            self.assertTrue(any("stale" in error.lower() for error in stale["errors"]))
+
+            build_docs(root)
+            page = root / ".okf-index" / "site" / "source" / ".okf" / "workflows" / "profiles" / "sdd.md"
+            self.assertTrue(page.is_file())
+            self.assertTrue(check_docs(root)["ok"])
+
     def test_check_detects_changed_source_since_last_build(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
