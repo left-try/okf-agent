@@ -68,6 +68,28 @@ Restart Codex afterwards. For Claude Code, Cursor, and Gemini CLI, the project-n
 
 `okf-agent run <agent>` prepares the repository and can launch the named client. It writes the project-native instructions, but the computed context in its JSON payload is not injected into the launched client. Configure the optional MCP server in a client to expose context retrieval and update tools directly.
 
+## Adaptive Development Workflows
+
+Workflow profiles are optional. Install the starter SDD, TDD, and GTDD policy when initializing a repository:
+
+~~~powershell
+okf-agent init . --profiles sdd,tdd,gtdd
+~~~
+
+Initialization preserves existing curated workflow files. Without the profiles option, existing initialization behavior is unchanged and no workflow configuration is installed. The optional configuration lives in .okf/workflows/config.json; .okf/workflows/active.md explains how agents select only relevant profile and role guidance.
+
+Classify changes by intent as feature, bugfix, hotfix, docs, tests, refactor, or maintenance. Assess rigor independently as light, standard, or strict, based on ambiguity, affected components, statefulness, security/data impact, reversibility, production exposure, and test confidence. Use --high-impact to force strict rigor for security, data, money, or production risk. Typical starting points are SDD + TDD for features, regression-first TDD for bug fixes, and light factual/link checks for prose-only docs. Strict work adds an explicit behavior contract and broader verification. Urgency never waives critical checks.
+
+Inspect policy or resolve an explicit assessment without changing repository state:
+
+~~~powershell
+okf-agent workflow show .
+okf-agent workflow explain . --type bugfix --risk standard
+okf-agent workflow resolve . --type feature --risk strict --stateful --execution single-agent
+~~~
+
+CLI and MCP use the same resolver. The task assessment is explicit; OKF does not infer arbitrary task semantics from prose. Independent GTDD requires separate coder, tester, and auditor contexts plus controlled handoffs. Until an executor provides those capabilities, resolution reports a single-agent adversarial review fallback. Installing GTDD profile documents does not create independent execution. OKF knowledge validation checks repository knowledge integrity and does not prove application tests passed.
+
 ## Pasteable Agent Setup Prompt
 
 Users can paste this into any terminal-capable coding agent after replacing the GitHub URL:

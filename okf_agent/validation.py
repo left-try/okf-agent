@@ -9,6 +9,7 @@ from .discovery import files
 from .docs import check_docs
 from .knowledge import GENERATED_END, GENERATED_START
 from .paths import REQUIRED_FILES, index_dir, okf_dir
+from .workflows import validate_workflows
 
 
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+[^)]*)?\)")
@@ -86,6 +87,8 @@ def validate(root: Path) -> dict[str, object]:
         names = re.findall(r"^name:\s*(\S.*)$", text, re.M)
         if versions != ["1"] or len(names) != 1 or not names[0].strip():
             errors.append("manifest.yaml must contain one schema_version: 1 and one non-empty name")
+
+    errors.extend(validate_workflows(root))
 
     if bundle.exists():
         for doc in bundle.rglob("*.md"):
