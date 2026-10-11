@@ -82,3 +82,23 @@ def search(root: Path, query: str, limit: int = 8) -> list[dict[str, str]]:
     symbols_found = db.execute("SELECT name, path FROM symbols WHERE name LIKE ? LIMIT ?", (f"%{query}%", limit)).fetchall()
     db.close()
     return [{"path": row[0], "excerpt": row[1]} for row in rows] + [{"path": row[1], "excerpt": f"symbol: {row[0]}"} for row in symbols_found]
+
+
+def indexed_content(root: Path) -> dict[str, list[dict[str, str]]]:
+    """Read the normalized source map from the disposable local index."""
+    store = index_dir(root) / "knowledge.sqlite3"
+    if not store.is_file():
+        raise FileNotFoundError(f"OKF index not found at {store}; run `okf-agent index` first")
+
+    db = sqlite3.connect(store)
+    try:
+        documents = db.execute("SELECT path, content FROM documents ORDER BY path").fetchall()
+        symbols_found = db.execute("SELECT name, path FROM symbols ORDER BY name, path").fetchall()
+        edges_found = db.execute("SELECT source, target, kind FROM edges ORDER BY source, target, kind").fetchall()
+        return {
+            "documents": [{"path": path, "content": content} for path, content in documents],
+            "symbols": [{"name": name, "path": path} for name, path in symbols_found],
+            "edges": [{"source": source, "target": target, "kind": kind} for source, target, kind in edges_found],
+        }
+    finally:
+        db.close()

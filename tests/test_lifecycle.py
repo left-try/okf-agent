@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from okf_agent import discovery
 from okf_agent.discovery import build_index, search
 from okf_agent.enforcement import install
 from okf_agent.knowledge import initialize
@@ -10,6 +11,39 @@ from okf_agent.validation import validate
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_indexed_content_returns_sorted_documents_symbols_and_edges(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "zeta.py").write_text("import alpha\ndef zebra():\n    pass\n", encoding="utf-8")
+            (root / "alpha.py").write_text("class Apple:\n    pass\n", encoding="utf-8")
+            build_index(root)
+
+            self.assertTrue(
+                hasattr(discovery, "indexed_content"),
+                "discovery.indexed_content() must expose indexed rows for documentation generation",
+            )
+            rows = discovery.indexed_content(root)
+
+            self.assertEqual([item["path"] for item in rows["documents"]], ["alpha.py", "zeta.py"])
+            self.assertEqual(
+                [(item["name"], item["path"]) for item in rows["symbols"]],
+                [("Apple", "alpha.py"), ("zebra", "zeta.py")],
+            )
+            self.assertEqual(rows["edges"], [{"source": "zeta.py", "target": "alpha", "kind": "import"}])
+
+    def test_indexed_content_missing_index_is_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            self.assertTrue(
+                hasattr(discovery, "indexed_content"),
+                "discovery.indexed_content() must expose indexed rows for documentation generation",
+            )
+            with self.assertRaisesRegex(FileNotFoundError, "index"):
+                discovery.indexed_content(root)
+
+            self.assertFalse((root / ".okf-index").exists())
+
     def test_initialize_index_update_preserves_curated_content(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

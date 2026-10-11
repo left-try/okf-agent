@@ -56,3 +56,16 @@ Install OKF Repository Brain from git+https://github.com/<owner>/okf-agent.git u
 ```
 
 Once initialized, the repository carries its own setup; collaborators only need the `okf-agent` CLI installed. `.okf/` is committed, while `.okf-index/` is local and can be deleted and rebuilt.
+
+## Generate Human-Facing Documentation
+
+When you want a browsable Markdown reference for people, generate it explicitly:
+
+```powershell
+okf-agent docs build .
+okf-agent docs check .
+```
+
+`docs build` refreshes the local index and writes `docs/reference/index.md` and `docs/reference/code-map.md`. It records indexed files, symbols, and import edges, and links to the curated application overview in `.okf/`. `docs check` compares those generated sections with the current repository and exits nonzero if pages are missing, malformed, or stale. It does not rewrite the docs or persistent local index.
+
+Generated pages use OKF markers. Human-authored text outside those markers is preserved by subsequent builds. The index can show what files and symbols exist; it does not infer what the product or architecture means. Add explanations to `.okf/` or the curated areas around the generated blocks. These commands run only when requested; initialization, updates, agent startup, and Git hooks do not generate `/docs`.

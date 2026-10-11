@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .discovery import build_index
+from .docs import build_docs, check_docs
 from .enforcement import install
 from .knowledge import initialize
 from .lifecycle import refresh_knowledge
@@ -36,6 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     install_parser.add_argument("--skills-dir", type=Path, help="Override the Codex skills directory")
     run = subs.add_parser("run"); run.add_argument("agent"); run.add_argument("path", nargs="?", default="."); run.add_argument("--no-launch", action="store_true")
     mcp = subs.add_parser("mcp"); mcp.add_argument("--repo", default=".")
+    docs = subs.add_parser("docs", help="Build or check human-facing repository documentation")
+    docs_subs = docs.add_subparsers(dest="docs_command", required=True)
+    for name in ("build", "check"):
+        docs_command = docs_subs.add_parser(name)
+        docs_command.add_argument("path", nargs="?", default=".")
+        docs_command.add_argument("--output", type=Path, help="Documentation output directory inside the repository")
     args = parser.parse_args(argv); root = find_root(getattr(args, "path", getattr(args, "repo", ".")))
     if args.command == "install":
         emit({"skill": str(install_codex_skill(args.skills_dir)), "next": "Restart Codex to discover the skill, then work normally in any repository."}); return 0
@@ -44,6 +51,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "update": initialize(root); emit(refresh_knowledge(root, args.changed_files)); return 0
     if args.command == "validate":
         result = validate(root); emit(result); return 0 if result["ok"] else 1
+    if args.command == "docs":
+        try:
+            result = build_docs(root, args.output) if args.docs_command == "build" else check_docs(root, args.output)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+        emit(result)
+        return 0 if args.docs_command == "build" or result["ok"] else 1
     if args.command == "doctor":
         result = {"root": str(root), "git": (root / ".git").exists(), "client": {a: bool(shutil.which(a)) for a in ("codex", "claude", "gemini")}, "validation": validate(root)}; emit(result); return 0 if result["validation"]["ok"] else 1
     if args.command == "run":
