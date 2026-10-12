@@ -9,10 +9,11 @@ from pathlib import Path
 
 from .discovery import build_index
 from .docs import build_docs, check_docs
+from .bundle import export_bundle, graph_query, index_bundle, search_bundle, validate_bundle
 from .enforcement import install_report
 from .knowledge import initialize
 from .lifecycle import refresh_knowledge
-from .mcp import create_server, context
+from .mcp import create_bundle_server, create_server, context
 from .onboarding import install_codex_skill
 from .paths import find_root
 from .validation import validate
@@ -75,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     install_parser.add_argument("--skills-dir", type=Path, help="Override the Codex skills directory")
     run = subs.add_parser("run", help="Prepare a repository for an agent and optionally launch its client"); run.add_argument("agent"); run.add_argument("path", nargs="?", default="."); run.add_argument("--no-launch", action="store_true")
     mcp = subs.add_parser("mcp"); mcp.add_argument("--repo", default=".")
+    mcp.add_argument("--profile", choices=("repository", "bundle"), default="repository")
+    mcp.add_argument("--root", type=Path, help="Bundle root when --profile bundle")
+    mcp.add_argument("--index-root", type=Path, help="Index root when --profile bundle")
     docs = subs.add_parser("docs", help="Build, check, or serve the local repository wiki")
     docs_subs = docs.add_subparsers(dest="docs_command", required=True)
     for name in ("build", "check"):
@@ -100,7 +104,39 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--high-impact", action="store_true", help="Force strict rigor for security, data, money, or production risk")
         command_parser.add_argument("--stateful", action="store_true", help="Mark independent challenge as materially useful")
         command_parser.add_argument("--execution", choices=("single-agent", "independent-roles"), default="single-agent")
+    bundle = subs.add_parser("bundle", help="Work with a standalone OKF Markdown bundle")
+    bundle_subs = bundle.add_subparsers(dest="bundle_command", required=True)
+    for name in ("index", "update", "validate", "export"):
+        command_parser = bundle_subs.add_parser(name)
+        command_parser.add_argument("--root", type=Path, required=True, help="Markdown bundle root (no Git required)")
+        command_parser.add_argument("--index-root", type=Path, required=True, help="Directory for disposable bundle index data")
+        if name in ("index", "update"):
+            command_parser.add_argument("--wikilinks", action="store_true", help="Also index [[wikilinks]]")
+    bundle_search = bundle_subs.add_parser("search", help="Search indexed Markdown with FTS")
+    bundle_search.add_argument("query")
+    bundle_search.add_argument("--root", type=Path, required=True)
+    bundle_search.add_argument("--index-root", type=Path, required=True)
+    bundle_search.add_argument("--limit", type=int, default=10)
+    for name in ("backlinks", "neighborhood"):
+        command_parser = bundle_subs.add_parser(name)
+        command_parser.add_argument("path")
+        command_parser.add_argument("--root", type=Path, required=True)
+        command_parser.add_argument("--index-root", type=Path, required=True)
+        command_parser.add_argument("--depth", type=int, default=1)
     args = parser.parse_args(argv); root = find_root(getattr(args, "path", getattr(args, "repo", ".")))
+    if args.command == "bundle":
+        if args.bundle_command in ("index", "update"):
+            emit(index_bundle(args.root, args.index_root, wikilinks=args.wikilinks)); return 0
+        if args.bundle_command == "validate":
+            result = validate_bundle(args.root, args.index_root); emit(result); return 0 if result["ok"] else 1
+        if args.bundle_command == "search":
+            emit(search_bundle(args.index_root, args.query, args.limit)); return 0
+        if args.bundle_command == "export":
+            emit(export_bundle(args.index_root)); return 0
+        if args.bundle_command == "backlinks":
+            emit(graph_query(args.index_root, args.path, args.depth, backlinks=True)); return 0
+        if args.bundle_command == "neighborhood":
+            emit(graph_query(args.index_root, args.path, args.depth)); return 0
     if args.command == "install":
         emit({"skill": str(install_codex_skill(args.skills_dir)), "next": "Restart Codex to discover the skill, then work normally in any repository."}); return 0
     if args.command == "init":
@@ -140,7 +176,13 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             watcher.stop()
     if args.command == "mcp":
-        try: create_server(args.repo).run()
+        try:
+            if args.profile == "bundle":
+                if args.root is None or args.index_root is None:
+                    parser.error("mcp --profile bundle requires --root and --index-root")
+                create_bundle_server(args.root, args.index_root).run()
+            else:
+                create_server(args.repo).run()
         except RuntimeError as exc: parser.error(str(exc))
     if args.command == "workflow":
         try:

@@ -8,6 +8,7 @@ from .lifecycle import refresh_knowledge
 from .paths import find_root, okf_dir
 from .validation import validate
 from .workflows import WorkflowAssessment, WorkflowCapabilities, load_policy, resolve_workflow, workflow_data
+from .bundle import export_bundle, graph_query, index_bundle, search_bundle, validate_bundle
 
 
 def context(root: Path, request: str) -> dict[str, object]:
@@ -83,4 +84,28 @@ def create_server(repo: str | Path = "."):
     def validate_tool() -> dict: return validate(root)
     @server.tool(name="okf.reindex")
     def reindex() -> dict: return build_index(root)
+    return server
+
+
+def create_bundle_server(bundle_root: str | Path, index_root: str | Path):
+    """Create the standalone, non-mutating OKF bundle MCP profile."""
+    try:
+        from fastmcp import FastMCP
+    except ImportError as exc:
+        raise RuntimeError("MCP support requires `pip install okf-agent[mcp]`.") from exc
+    root, index = Path(bundle_root).expanduser().resolve(), Path(index_root).expanduser().resolve()
+    server = FastMCP("OKF Markdown Bundle")
+
+    @server.tool(name="okf.bundle_index")
+    def reindex(wikilinks: bool = False) -> dict: return index_bundle(root, index, wikilinks=wikilinks)
+    @server.tool(name="okf.bundle_validate")
+    def validate_tool() -> dict: return validate_bundle(root, index)
+    @server.tool(name="okf.bundle_search")
+    def search_tool(query: str, limit: int = 10) -> list[dict]: return search_bundle(index, query, limit)
+    @server.tool(name="okf.bundle_backlinks")
+    def backlinks(path: str, depth: int = 1) -> dict: return graph_query(index, path, depth, backlinks=True)
+    @server.tool(name="okf.bundle_neighborhood")
+    def neighborhood(path: str, depth: int = 1) -> dict: return graph_query(index, path, depth)
+    @server.tool(name="okf.bundle_export")
+    def export() -> dict: return export_bundle(index)
     return server
