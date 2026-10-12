@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,15 @@ from okf_agent.workflows import (
     load_policy,
     resolve_workflow,
 )
+
+
+def _symlink_or_skip(path: Path, target: Path, *, target_is_directory: bool = False) -> None:
+    try:
+        path.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as exc:
+        if os.name == "nt":
+            raise unittest.SkipTest(f"symlink creation is unavailable: {exc}") from exc
+        raise
 
 
 class WorkflowResolverTests(unittest.TestCase):
@@ -248,7 +258,7 @@ class WorkflowConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside:
             root = Path(directory)
             (root / ".okf").mkdir()
-            (root / ".okf" / "workflows").symlink_to(Path(outside), target_is_directory=True)
+            _symlink_or_skip(root / ".okf" / "workflows", Path(outside), target_is_directory=True)
 
             result = install_profiles(root, ("sdd",))
 
@@ -262,7 +272,7 @@ class WorkflowConfigTests(unittest.TestCase):
             workflow.mkdir(parents=True)
             external = Path(outside) / "config.json"
             external.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
-            (workflow / "config.json").symlink_to(external)
+            _symlink_or_skip(workflow / "config.json", external)
 
             with self.assertRaisesRegex(WorkflowConfigError, "unsafe"):
                 load_policy(root)

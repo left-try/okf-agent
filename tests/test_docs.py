@@ -25,6 +25,24 @@ class DocsTests(unittest.TestCase):
             self.assertIn("source/.okf/application/overview.md", (output / "index.md").read_text())
             self.assertTrue(check_docs(root)["ok"])
 
+    def test_code_map_is_generated_from_indexed_symbols_and_import_edges(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            initialize(root)
+            (root / "alpha.py").write_text("class Alpha:\n    pass\n", encoding="utf-8")
+            (root / "zeta.py").write_text("import alpha\ndef zebra():\n    pass\n", encoding="utf-8")
+
+            result = build_docs(root)
+
+            output = Path(result["output"])
+            code_map = (output / "code-map.md").read_text(encoding="utf-8")
+            self.assertIn("Indexed source files", code_map)
+            self.assertIn("Alpha", code_map)
+            self.assertIn("zebra", code_map)
+            self.assertIn("alpha", code_map)
+            self.assertIn("code-map.md", (output / "index.md").read_text(encoding="utf-8"))
+            self.assertTrue(check_docs(root)["ok"])
+
     def test_build_is_byte_repeatable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -37,6 +55,17 @@ class DocsTests(unittest.TestCase):
             after = {p.relative_to(output).as_posix(): p.read_bytes() for p in output.rglob("*") if p.is_file()}
 
             self.assertEqual(after, before)
+
+    def test_docs_output_must_stay_inside_repository(self):
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside:
+            root = Path(directory)
+            initialize(root)
+
+            with self.assertRaisesRegex(ValueError, "inside the repository"):
+                build_docs(root, Path(outside) / "site")
+
+            result = check_docs(root, Path(outside) / "site")
+            self.assertFalse(result["ok"])
 
     def test_workflow_pages_are_mirrored_and_config_changes_stale_the_wiki(self):
         with tempfile.TemporaryDirectory() as directory:

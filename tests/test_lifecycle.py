@@ -1,5 +1,6 @@
 import tempfile
 import json
+import os
 import unittest
 import subprocess
 import threading
@@ -8,7 +9,7 @@ import re
 from unittest.mock import patch
 from pathlib import Path
 
-from okf_agent.discovery import build_index, detect, search
+from okf_agent.discovery import build_index, detect, indexed_content, search
 from okf_agent.docs import build_docs, check_docs
 from okf_agent.enforcement import install, install_report
 from okf_agent.knowledge import initialize, replace_generated
@@ -18,7 +19,41 @@ from okf_agent.watcher import _snapshot, start
 from okf_agent.paths import find_root
 
 
+def _symlink_or_skip(path: Path, target: Path, *, target_is_directory: bool = False) -> None:
+    try:
+        path.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as exc:
+        if os.name == "nt":
+            raise unittest.SkipTest(f"symlink creation is unavailable: {exc}") from exc
+        raise
+
+
 class LifecycleTests(unittest.TestCase):
+    def test_indexed_content_returns_sorted_documents_symbols_and_edges(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "zeta.py").write_text("import alpha\ndef zebra():\n    pass\n", encoding="utf-8")
+            (root / "alpha.py").write_text("class Apple:\n    pass\n", encoding="utf-8")
+            build_index(root)
+
+            rows = indexed_content(root)
+
+            self.assertEqual([item["path"] for item in rows["documents"]], ["alpha.py", "zeta.py"])
+            self.assertEqual(
+                [(item["name"], item["path"]) for item in rows["symbols"]],
+                [("Apple", "alpha.py"), ("zebra", "zeta.py")],
+            )
+            self.assertEqual(rows["edges"], [{"source": "zeta.py", "target": "alpha", "kind": "import"}])
+
+    def test_indexed_content_missing_index_is_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            with self.assertRaisesRegex(FileNotFoundError, "index"):
+                indexed_content(root)
+
+            self.assertFalse((root / ".okf-index").exists())
+
     def test_find_root_ignores_empty_git_marker_above_project(self):
         with tempfile.TemporaryDirectory() as directory:
             parent = Path(directory)
@@ -288,7 +323,7 @@ class LifecycleTests(unittest.TestCase):
             external = Path(outside) / "instructions.md"
             original = "# Shared instructions\n"
             external.write_text(original, encoding="utf-8")
-            (root / "AGENTS.md").symlink_to(external)
+            _symlink_or_skip(root / "AGENTS.md", external)
             initialize(root, profiles=("sdd",))
 
             result = install_report(root)
@@ -300,8 +335,8 @@ class LifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside:
             root = Path(directory)
             external = Path(outside)
-            (root / ".claude").symlink_to(external, target_is_directory=True)
-            (root / ".cursor").symlink_to(external, target_is_directory=True)
+            _symlink_or_skip(root / ".claude", external, target_is_directory=True)
+            _symlink_or_skip(root / ".cursor", external, target_is_directory=True)
             initialize(root, profiles=("sdd",))
 
             result = install_report(root)

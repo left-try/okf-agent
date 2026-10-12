@@ -85,6 +85,7 @@ class WebTests(unittest.TestCase):
             source.symlink_to(outside)
         except OSError:
             source.write_bytes(original)
+            outside.unlink(missing_ok=True)
             self.skipTest("symlink creation is not available on this platform")
         try:
             with self.assertRaises(HTTPError) as error:

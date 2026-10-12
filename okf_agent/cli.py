@@ -80,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("build", "check"):
         docs_command = docs_subs.add_parser(name)
         docs_command.add_argument("path", nargs="?", default=".")
+        docs_command.add_argument("--output", type=Path, help="Documentation output directory")
     serve = docs_subs.add_parser("serve")
     serve.add_argument("path", nargs="?", default=".")
     serve.add_argument("--host", default="127.0.0.1")
@@ -168,9 +169,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     if args.command == "docs":
         if args.docs_command == "build":
-            emit(build_docs(root)); return 0
+            emit(build_docs(root, args.output)); return 0
         if args.docs_command == "check":
-            result = check_docs(root); emit(result); return 0 if result["ok"] else 1
+            result = check_docs(root, args.output); emit(result); return 0 if result["ok"] else 1
         if args.docs_command == "serve":
             serve_docs(root, args.host, args.port); return 0
     return 0

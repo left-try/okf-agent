@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 from urllib.parse import quote
 
-from .discovery import detect, files
+from .discovery import build_index, detect, files, indexed_content
 from .paths import index_dir, okf_dir
 
 
@@ -30,12 +31,25 @@ def _source_files(root: Path) -> list[Path]:
 
 
 def _output_path(root: Path, output: Path | None) -> Path:
-    target = (output or (index_dir(root) / "site")).resolve()
-    if output is None:
-        try:
-            target.relative_to(index_dir(root).resolve())
-        except ValueError as exc:
-            raise ValueError("Default documentation output must stay inside `.okf-index/`.") from exc
+    root = root.resolve()
+    candidate = output if output is not None else index_dir(root) / "site"
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    candidate = Path(os.path.abspath(candidate))
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Documentation output must stay inside the repository: {candidate}") from exc
+    current = root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError(f"Documentation output cannot traverse a symlink: {current}")
+    target = candidate.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Documentation output must stay inside the repository: {candidate}") from exc
     return target
 
 
@@ -63,6 +77,7 @@ def build_docs(root: Path, output: Path | None = None) -> dict[str, object]:
     """Copy the curated knowledge bundle into a deterministic local wiki tree."""
     root = root.resolve()
     target = _output_path(root, output)
+    build_index(root)
     sources = _source_files(root)
     source_hashes: dict[str, str] = {}
     generated: dict[str, bytes] = {}
@@ -88,6 +103,39 @@ def build_docs(root: Path, output: Path | None = None) -> dict[str, object]:
     ).encode("utf-8")
     generated["repository.md"] = repository_page
     pages.insert(0, ("repository.md", f"{root.name} Repository"))
+
+    indexed = indexed_content(root)
+    code_map_lines = ["# Code Map", "", "## Indexed source files", ""]
+    def source_link(path: str) -> str:
+        relative = Path(os.path.relpath(root / Path(path), target)).as_posix()
+        return quote(relative, safe="/._-~")
+
+    source_documents = [
+        item for item in indexed["documents"]
+        if Path(item["path"]).suffix.lower() in {".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".java", ".cs", ".rb", ".php"}
+    ]
+    if source_documents:
+        for item in source_documents:
+            code_map_lines.append(f"- [`{item['path']}`]({source_link(item['path'])})")
+    else:
+        code_map_lines.append("No indexed source files were found.")
+    code_map_lines.extend(["", "## Indexed symbols", ""])
+    if indexed["symbols"]:
+        symbols_by_path: dict[str, list[str]] = {}
+        for item in indexed["symbols"]:
+            symbols_by_path.setdefault(item["path"], []).append(item["name"])
+        for path, names in sorted(symbols_by_path.items()):
+            code_map_lines.append(f"- [`{path}`]({source_link(path)}): " + ", ".join(f"`{name}`" for name in sorted(names)))
+    else:
+        code_map_lines.append("No indexed symbols were found.")
+    code_map_lines.extend(["", "## Indexed import edges", ""])
+    if indexed["edges"]:
+        for edge in indexed["edges"]:
+            code_map_lines.append(f"- [`{edge['source']}`]({source_link(edge['source'])}) → `{edge['target']}` ({edge['kind']})")
+    else:
+        code_map_lines.append("No import edges were found.")
+    generated["code-map.md"] = ("\n".join(code_map_lines) + "\n").encode("utf-8")
+    pages.insert(1, ("code-map.md", "Code Map"))
 
     index_lines = [f"# {root.name} Repository Wiki", "", "## Pages", ""]
     for page_path, title in pages:
