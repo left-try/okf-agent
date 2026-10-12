@@ -56,6 +56,23 @@ okf-agent docs check .
 
 The generated site is not published or pushed to GitHub. `.okf/` remains the source of truth. The site includes deterministic project facts and mirrors curated Markdown pages; it does not invent architectural explanations.
 
+## Standalone OKF Markdown Bundles
+
+The `bundle` profile indexes an arbitrary Markdown corpus without requiring Git. It keeps source files read-only and stores its SQLite/FTS index only in the explicitly supplied index directory. It does not create `.okf/`, repository instructions, workflow policy, or hooks.
+
+~~~powershell
+okf-agent bundle index --root .\training --index-root .\training-index
+okf-agent bundle search "lesson objectives" --root .\training --index-root .\training-index
+okf-agent bundle backlinks courses\intro.md --root .\training --index-root .\training-index
+okf-agent bundle neighborhood courses\intro.md --depth 2 --root .\training --index-root .\training-index
+okf-agent bundle validate --root .\training --index-root .\training-index
+okf-agent bundle export --root .\training --index-root .\training-index
+~~~
+
+This profile reads OKF v0.2 YAML frontmatter, indexes titles, types, aliases, full metadata, Markdown body, source provenance, and directed Markdown links. Unknown types and fields are retained. Broken or ambiguous links are reported as diagnostics and do not fail standard OKF conformance. Relative links, bundle-root links beginning with `/`, escaped or percent-encoded spaces, anchors, image links, fenced code, and optional `[[wikilinks]]` are supported. The `update` command is an alias for reindexing and never writes to corpus Markdown, so hand edits remain the source of truth. `bundle export` returns nodes, directed links, provenance, and the latest validation result as JSON.
+
+Expose the same API over MCP with `okf-agent mcp --profile bundle --root <bundle> --index-root <index>`. The repository MCP and commands remain on their existing profile. Consumers such as ConceptLoom can use the bundle CLI/MCP contract without installing repository adapters.
+
 The source index currently scans `.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.go`, `.rs`, `.java`, `.cs`, `.rb`, and `.php` files. It also indexes `pyproject.toml`, `requirements.txt`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, `Dockerfile`, `docker-compose.yml`, and `.env.example`. Language facts are inferred from Python, Node.js, Go, Rust, and Maven manifests; the current framework hint is Node.js for `package.json`.
 
 For Codex users, the optional global installer activates OKF automatically for future repository tasks:
