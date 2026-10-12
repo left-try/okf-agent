@@ -30,7 +30,7 @@ After installing the CLI, users run this once inside each repository:
 okf-agent init .
 ```
 
-It creates `.okf/`, builds the local index, installs Git hooks where they are safe to install, and writes native repository instructions for each supported client:
+It creates `.okf/`, builds the local index and local wiki, installs Git hooks where they are safe to install, and writes native repository instructions for each supported client:
 
 - `AGENTS.md` for Codex and generic agents
 - `CLAUDE.md` and `.claude/rules/okf.md` for Claude Code
@@ -39,6 +39,25 @@ It creates `.okf/`, builds the local index, installs Git hooks where they are sa
 
 Existing instruction files are preserved and receive one OKF protocol block. Existing non-OKF Git hooks are left untouched.
 
+The wiki is generated into `.okf-index/site/`, which is local and rebuildable. It has a page list, project facts, copies of `.okf/` Markdown pages, and simple text search. Start the read-only local web UI with:
+
+```powershell
+okf-agent docs serve .
+```
+
+It binds to `127.0.0.1` by default. To rebuild or check the generated pages explicitly:
+
+```powershell
+okf-agent docs build .
+okf-agent docs check .
+```
+
+`okf-agent update .` refreshes repository facts and the SQLite index. If the local wiki has already been created, `update` rebuilds it too. `okf-agent validate .` checks for stale wiki output, and the generated pre-push hook runs validation. A stale or corrupted generated site makes validation fail; rebuild it with `okf-agent docs build .`.
+
+The generated site is not published or pushed to GitHub. `.okf/` remains the source of truth. The site includes deterministic project facts and mirrors curated Markdown pages; it does not invent architectural explanations.
+
+The source index currently scans `.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.go`, `.rs`, `.java`, `.cs`, `.rb`, and `.php` files. It also indexes `pyproject.toml`, `requirements.txt`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, `Dockerfile`, `docker-compose.yml`, and `.env.example`. Language facts are inferred from Python, Node.js, Go, Rust, and Maven manifests; the current framework hint is Node.js for `package.json`.
+
 For Codex users, the optional global installer activates OKF automatically for future repository tasks:
 
 ```powershell
@@ -46,6 +65,30 @@ okf-agent install
 ```
 
 Restart Codex afterwards. For Claude Code, Cursor, and Gemini CLI, the project-native files created by `init` are loaded whenever the user opens that repository.
+
+`okf-agent run <agent>` prepares the repository and can launch the named client. It writes the project-native instructions, but the computed context in its JSON payload is not injected into the launched client. Configure the optional MCP server in a client to expose context retrieval and update tools directly.
+
+## Adaptive Development Workflows
+
+Workflow profiles are optional. Install the starter SDD, TDD, and GTDD policy when initializing a repository:
+
+~~~powershell
+okf-agent init . --profiles sdd,tdd,gtdd
+~~~
+
+Initialization preserves existing curated workflow files. Without the profiles option, existing initialization behavior is unchanged and no workflow configuration is installed. The optional configuration lives in .okf/workflows/config.json; .okf/workflows/active.md explains how agents select only relevant profile and role guidance.
+
+Classify changes by intent as feature, bugfix, hotfix, docs, tests, refactor, or maintenance. Assess rigor independently as light, standard, or strict, based on ambiguity, affected components, statefulness, security/data impact, reversibility, production exposure, and test confidence. Use --high-impact to force strict rigor for security, data, money, or production risk. Typical starting points are SDD + TDD for features, regression-first TDD for bug fixes, and light factual/link checks for prose-only docs. Strict work adds an explicit behavior contract and broader verification. Urgency never waives critical checks.
+
+Inspect policy or resolve an explicit assessment without changing repository state:
+
+~~~powershell
+okf-agent workflow show .
+okf-agent workflow explain . --type bugfix --risk standard
+okf-agent workflow resolve . --type feature --risk strict --stateful --execution single-agent
+~~~
+
+CLI and MCP use the same resolver. The task assessment is explicit; OKF does not infer arbitrary task semantics from prose. Independent GTDD requires separate coder, tester, and auditor contexts plus controlled handoffs. Until an executor provides those capabilities, resolution reports a single-agent adversarial review fallback. Installing GTDD profile documents does not create independent execution. OKF knowledge validation checks repository knowledge integrity and does not prove application tests passed.
 
 ## Pasteable Agent Setup Prompt
 
@@ -59,13 +102,13 @@ Once initialized, the repository carries its own setup; collaborators only need 
 
 ## Generate Human-Facing Documentation
 
-When you want a browsable Markdown reference for people, generate it explicitly:
+The default local wiki is created by `init` and refreshed by `update` after it has been built once. To create a Markdown reference at another location on request, pass an output directory:
 
 ```powershell
-okf-agent docs build .
-okf-agent docs check .
+okf-agent docs build . --output docs/reference
+okf-agent docs check . --output docs/reference
 ```
 
-`docs build` refreshes the local index and writes `docs/reference/index.md` and `docs/reference/code-map.md`. It records indexed files, symbols, and import edges, and links to the curated application overview in `.okf/`. `docs check` compares those generated sections with the current repository and exits nonzero if pages are missing, malformed, or stale. It does not rewrite the docs or persistent local index.
+`docs build` refreshes the SQLite index and writes a wiki with a page list, repository facts, curated `.okf/` pages, and `code-map.md`. The code map lists indexed source files, symbols, and import edges. `docs check` verifies source and generated-page hashes and exits nonzero when output is stale or changed.
 
-Generated pages use OKF markers. Human-authored text outside those markers is preserved by subsequent builds. The index can show what files and symbols exist; it does not infer what the product or architecture means. Add explanations to `.okf/` or the curated areas around the generated blocks. These commands run only when requested; initialization, updates, agent startup, and Git hooks do not generate `/docs`.
+The generated pages show which files and symbols exist; they do not infer product behavior or architectural meaning. Add those explanations to `.okf/` or other curated Markdown pages. The default output remains local under `.okf-index/`; choose a different output path only when you want to keep the generated reference alongside the repository documentation.

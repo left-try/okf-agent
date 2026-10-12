@@ -1,6 +1,6 @@
 # Reliable Repository Knowledge and Local Wiki Implementation Plan
 
-> **For agentic workers:** Use this plan task by task. Each checkbox is a reviewable deliverable.
+> **For agentic workers:** Use `superpowers:executing-plans` and execute task by task. Each checkbox is a reviewable deliverable.
 
 **Goal:** Make OKF knowledge updates dependable and provide a local, searchable wiki view whose pages can be checked for freshness against repository changes.
 
@@ -17,6 +17,7 @@
 - Deterministic extraction may generate facts and navigation. Explanatory or architectural claims remain curated Markdown unless a human reviews them.
 - The local wiki must run without a hosted service and must not expose repository files outside its documentation surface.
 - `okf-agent docs check` must return a nonzero exit status when generated pages are stale or invalid.
+- `init` builds the local wiki; `update` rebuilds it when present; `validate` blocks stale generated wiki output before push.
 
 ## Current Errors and Recommendations
 
@@ -25,7 +26,7 @@
 | P1 | `lifecycle.refresh_knowledge()` updates `.okf/` but does not rebuild `.okf-index/`; searches can remain stale after `update`. | Make update refresh both knowledge facts and the local index, with a single clear lifecycle entry point. |
 | P1 | `lifecycle.git_changed()` uses `git diff --name-only HEAD`, which omits untracked files. | Collect staged, unstaged, and untracked paths, normalize and deduplicate them, and tolerate non-Git directories. |
 | P1 | The generated `pre-commit` hook runs `update` with `|| exit 0`, hiding failures. | Preserve existing hooks, report OKF failures, and define explicit fail-open/fail-closed behavior; default validation hooks should not silently claim success. |
-| P1 | `cli.run` computes context but does not pass it to the launched client; the watcher only runs in this command. | Either implement a real adapter for each supported client or describe `run` as preparation-only until context injection works. Ensure background workers stop cleanly. |
+| P1 | `cli.run` computes context but does not pass it to the launched client; the watcher only runs in this command. | State clearly that the payload is not injected; clients receive the native repository instructions. Ensure background workers stop cleanly. |
 | P2 | `validation.validate()` checks required files and marker closure only. | Validate manifest structure, generated block pairing, documentation links, and index/document freshness. Return actionable errors. |
 | P2 | `discovery.detect()` recognizes some manifests that `discovery.files()` does not index, including `go.mod`, `Cargo.toml`, and `pom.xml`. | Align discovery and indexing coverage; add focused fixture tests for each supported language and manifest. |
 | P2 | `watcher.start()` does not handle files disappearing between enumeration and `stat()`. | Make polling resilient to filesystem races, expose stop/join behavior, and report indexing errors instead of silently swallowing them. |
@@ -70,28 +71,28 @@
 
 **Files:** `okf_agent/lifecycle.py`, `tests/test_lifecycle.py`
 
-- [ ] Add tests for staged, unstaged, and untracked paths, plus a directory without Git metadata.
-- [ ] Implement a changed-path collector that merges Git status sources, normalizes paths relative to the repository root, and deduplicates results.
-- [ ] Make `refresh_knowledge()` call `build_index(root)` after refreshing generated facts.
-- [ ] Run `python -m unittest tests.test_lifecycle -v`; all lifecycle tests pass.
+- [x] Add tests for staged, unstaged, and untracked paths, plus a directory without Git metadata.
+- [x] Implement a changed-path collector that merges Git status sources, normalizes paths relative to the repository root, and deduplicates results.
+- [x] Make `refresh_knowledge()` call `build_index(root)` after refreshing generated facts.
+- [x] Run `python -m unittest discover -s tests -p test_lifecycle.py -v`; all lifecycle tests pass.
 
 #### Task 2: Make watcher shutdown and polling reliable
 
 **Files:** `okf_agent/watcher.py`, `okf_agent/cli.py`, `tests/test_lifecycle.py`
 
-- [ ] Add tests for a disappearing file, an indexing error, and stopping the watcher.
-- [ ] Return a watcher handle that can stop and join the worker; handle `OSError` per-file without terminating the loop.
-- [ ] Stop and join the watcher in `cli.run` after the client process exits, including when launch fails.
-- [ ] Run the lifecycle tests and confirm the worker exits within its bounded join timeout.
+- [x] Add tests for a disappearing file, an indexing error, and stopping the watcher.
+- [x] Return a watcher handle that can stop and join the worker; handle `OSError` per-file without terminating the loop.
+- [x] Stop and join the watcher in `cli.run` after the client process exits, including when launch fails.
+- [x] Run the lifecycle tests and confirm the worker exits within its bounded join timeout.
 
 #### Task 3: Align language and manifest discovery
 
 **Files:** `okf_agent/discovery.py`, `tests/test_lifecycle.py`
 
-- [ ] Add fixtures for Python, JavaScript/TypeScript, Go, Rust, and Java manifests.
-- [ ] Include every manifest recognized by `detect()` in the indexer's document set.
-- [ ] Make reported language/framework hints match files actually indexed; unsupported frameworks must not be guessed from a manifest alone.
-- [ ] Run discovery and lifecycle tests; assert each fixture reports and indexes its expected manifest.
+- [x] Add fixtures for Python, JavaScript/TypeScript, Go, Rust, and Java manifests and representative source extensions.
+- [x] Include every manifest recognized by `detect()` in the indexer's document set.
+- [x] Make reported language/framework hints match files actually indexed; unsupported frameworks must not be guessed from a manifest alone.
+- [x] Run discovery and lifecycle tests; assert each fixture reports and indexes its expected manifest.
 
 ### Phase 2: Make validation and automation trustworthy
 
@@ -99,28 +100,30 @@
 
 **Files:** `okf_agent/validation.py`, `tests/test_lifecycle.py`
 
-- [ ] Add tests for malformed YAML fields, unmatched start/end markers, missing index, and broken local Markdown links.
-- [ ] Validate `schema_version`, generated marker pairing/order, known relative links, and index presence/freshness.
-- [ ] Keep `validate()` result keys `ok`, `errors`, and `warnings` stable; include repository-relative paths in diagnostics.
-- [ ] Run `python -m unittest tests.test_lifecycle -v`; invalid fixtures fail with the expected message and valid initialized fixtures pass.
+- [x] Add tests for invalid or duplicate manifest fields, unmatched start/end markers, missing/stale index, and broken local Markdown links.
+- [x] Validate `schema_version`, generated marker pairing/order, known relative links, and index presence/freshness.
+- [x] Keep `validate()` result keys `ok`, `errors`, and `warnings` stable; include repository-relative paths in diagnostics.
+- [x] Run lifecycle tests; invalid fixtures fail with the expected message and valid initialized fixtures pass.
 
 #### Task 5: Repair Git hook failure behavior and make generated writes idempotent
 
 **Files:** `okf_agent/enforcement.py`, `okf_agent/knowledge.py`, `okf_agent/lifecycle.py`, `tests/test_lifecycle.py`
 
-- [ ] Add tests proving that existing custom hooks remain unchanged, OKF hooks surface command failures, and repeated updates without source changes do not rewrite generated files.
-- [ ] Remove unconditional success masking from the generated `pre-commit` hook and document the hook's exit behavior.
-- [ ] Only replace generated blocks when generated content differs; do not update timestamps on content-identical runs.
-- [ ] Run onboarding and lifecycle tests on supported operating systems in CI once the workflow exists.
+- [x] Add tests proving that existing custom hooks remain unchanged, OKF hooks surface command failures, and repeated updates without source changes do not rewrite generated files.
+- [x] Remove unconditional success masking from the generated `pre-commit` hook and document the hook's exit behavior.
+- [x] Only replace generated blocks when generated content differs; do not update timestamps on content-identical runs.
+- [x] Record cross-platform CI as follow-up work; no CI workflow exists in this repository yet.
 
 #### Task 6: Make `run` behavior honest and deterministic
 
+**Ruling:** Keep launching the requested executable for backwards compatibility, but print the context-delivery limitation before launch. Per-client prompt injection is deferred until reliable client-specific adapters are designed.
+
 **Files:** `okf_agent/cli.py`, `okf_agent/onboarding.py`, `tests/test_onboarding.py`
 
-- [ ] Add tests for `--no-launch`, missing executable, child-process exit status, and unsupported adapters.
-- [ ] Define per-client adapter capabilities; reject unsupported context injection with a clear message instead of launching as if context were applied.
-- [ ] Keep preparation-only behavior explicit in CLI output and README examples.
-- [ ] Run onboarding tests and verify the CLI's exit status matches the child process or adapter error.
+- [x] Add tests for `--no-launch`, missing executable, and child-process exit status.
+- [x] Report clearly in CLI output that computed context is not injected; native repository instructions remain the client integration.
+- [x] Keep the context-delivery limitation explicit in CLI output and README examples.
+- [x] Run onboarding tests and verify the CLI's exit status matches the child process or client error.
 
 ### Phase 3: Generate and browse local documentation
 
@@ -128,35 +131,34 @@
 
 **Files:** `okf_agent/docs.py` (new), `okf_agent/cli.py`, `tests/test_docs.py` (new)
 
-- [ ] Add tests for generated page paths, navigation, source links, and repeatable output.
-- [ ] Define `build_docs(root: Path, output: Path | None = None) -> dict[str, object]` to build deterministic human-facing pages from the refreshed SQLite index, recognized repository facts, and curated `.okf/application/overview.md` content.
-- [ ] Preserve hand-authored text outside paired OKF generated markers; manage only `docs/reference/index.md` and `docs/reference/code-map.md` by default.
-- [ ] Keep `/docs` generation opt-in: only `okf-agent docs build` writes pages. `init`, `update`, `run`, watchers, and Git hooks do not generate or rewrite human-facing docs.
-- [ ] Add `okf-agent docs check`; it builds an index snapshot in a temporary directory, does not write docs or the repository's persistent index, and exits nonzero for missing, malformed, or stale generated sections.
-- [ ] Do not generate product or architectural explanations from symbol names or import edges; keep human-authored explanations in `.okf/` and curated Markdown areas.
-- [ ] Run docs tests; two builds from unchanged input produce byte-identical files.
+- [x] Add tests for generated page paths, navigation, source links, and repeatable output.
+- [x] Define `build_docs(root: Path, output: Path | None = None) -> dict[str, object]` to build pages from `.okf/` Markdown and detected repository facts.
+- [x] Store a manifest containing source paths and content hashes so freshness checks do not rely only on timestamps; include indexed source files as freshness inputs.
+- [x] Add `okf-agent docs build` and `okf-agent docs check`; `check` returns nonzero when inputs changed since the last build.
+- [x] Run docs tests; two builds from unchanged input produce byte-identical files.
 
 #### Task 8: Add a safe local wiki UI
 
 **Files:** `okf_agent/web.py` (new), `okf_agent/cli.py`, `tests/test_web.py` (new)
 
-- [ ] Add tests for page rendering, navigation/search, unknown routes, traversal attempts, and symlink escapes.
-- [ ] Implement `serve_docs(root: Path, host: str = "127.0.0.1", port: int = 0) -> None` using the Python standard library and only serve generated documentation pages.
-- [ ] Add `okf-agent docs serve` with loopback binding by default and a printed local URL.
-- [ ] Run web tests; valid pages render and all out-of-scope paths return 404 without reading their targets.
+- [x] Add tests for page rendering, navigation/search, unknown routes, traversal attempts, and paths resolving outside the site root.
+- [x] Implement `serve_docs(root: Path, host: str = "127.0.0.1", port: int = 0) -> None` using the Python standard library and only serve generated documentation pages.
+- [x] Add `okf-agent docs serve` with loopback binding by default and a printed local URL.
+- [x] Run web tests; valid pages render and out-of-scope paths return 404. A real symlink test is skipped on this Windows host because symlink creation is unavailable; the resolver escape test covers the same path check.
 
 #### Task 9: Document the supported workflow
 
 **Files:** `README.md`, `tests/test_onboarding.py`
 
-- [ ] Document init, update, validate, docs build/check/serve, supported client behavior, and current language coverage.
-- [ ] Explain that generated facts are deterministic and curated explanations require review.
-- [ ] Add a CLI help smoke test for nested `docs` commands.
-- [ ] Run the full unittest suite and follow the README steps in a temporary repository.
+- [x] Document init, update, validate, docs build/check/serve, supported client behavior, and current language coverage.
+- [x] Explain that generated facts are deterministic and curated explanations require review.
+- [x] Add a CLI help smoke test for nested `docs` commands.
+- [x] Run the full unittest suite and follow the README steps in a temporary repository.
 
 ## Deferred Work
 
 - GitHub Wiki export and GitHub Pages publication.
+- Cross-platform CI workflow and CI enforcement.
 - Hosted wiki service, authentication, or multi-user editing.
 - AI-authored architectural explanations and autonomous documentation rewrites.
 - Broad language/framework coverage beyond the initial supported manifest and source list.

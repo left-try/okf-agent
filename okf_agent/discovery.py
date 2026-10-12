@@ -10,6 +10,10 @@ from .paths import index_dir
 
 SKIP = {".git", ".okf", ".okf-index", "node_modules", ".venv", "venv", "dist", "build", "__pycache__"}
 SOURCE_SUFFIXES = {".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".java", ".cs", ".rb", ".php"}
+MANIFEST_NAMES = {
+    "pyproject.toml", "requirements.txt", "package.json", "go.mod", "Cargo.toml",
+    "pom.xml", "Dockerfile", "docker-compose.yml", ".env.example",
+}
 
 
 def files(root: Path):
@@ -17,7 +21,7 @@ def files(root: Path):
         dirs[:] = [d for d in dirs if d not in SKIP]
         for name in names:
             path = Path(base) / name
-            if path.suffix.lower() in SOURCE_SUFFIXES or name in {"package.json", "pyproject.toml", "requirements.txt", "Dockerfile", "docker-compose.yml", ".env.example"}:
+            if path.suffix.lower() in SOURCE_SUFFIXES or name in MANIFEST_NAMES:
                 yield path
 
 

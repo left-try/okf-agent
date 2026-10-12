@@ -18,3 +18,11 @@ okf-agent = "okf_agent.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["okf_agent*"]
+
+[tool.setuptools.package-data]
+okf_agent = [
+    "templates/workflows/*.json",
+    "templates/workflows/*.md",
+    "templates/workflows/profiles/*.md",
+    "templates/workflows/roles/*.md",
+]

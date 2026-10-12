@@ -1,101 +1,38 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
-import shutil
-import tempfile
 from pathlib import Path
 from urllib.parse import quote
 
-from .discovery import SOURCE_SUFFIXES, build_index, detect, files, indexed_content
-from .knowledge import GENERATED_END, GENERATED_START
+from .discovery import build_index, detect, files, indexed_content
+from .paths import index_dir, okf_dir
 
 
-def _relative_link(output: Path, target: Path, label: str) -> str:
-    relative = Path(os.path.relpath(target, output)).as_posix()
-    destination = quote(relative, safe="/._-~")
-    safe_label = label.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
-    return f"[{safe_label}]({destination})"
+MANIFEST = "manifest.json"
 
 
-def _curated_overview(root: Path) -> str:
-    overview = root / ".okf" / "application" / "overview.md"
-    if not overview.is_file():
-        return ""
-    content = overview.read_text(encoding="utf-8", errors="replace")
-    marker_pattern = re.escape(GENERATED_START) + r".*?" + re.escape(GENERATED_END)
-    content = re.sub(marker_pattern, "", content, flags=re.S).strip()
-    content = re.sub(r"^# Application Overview\s*", "", content, count=1)
-    return content.strip()
+def _source_files(root: Path) -> list[Path]:
+    bundle = okf_dir(root)
+    if not bundle.is_dir():
+        raise ValueError("Knowledge bundle is missing; run `okf-agent init` first.")
+    paths = [path for path in bundle.rglob("*.md") if path.is_file() and not path.is_symlink()]
+    manifest = bundle / "manifest.yaml"
+    if manifest.is_file() and not manifest.is_symlink():
+        paths.append(manifest)
+    workflow_config = bundle / "workflows" / "config.json"
+    if workflow_config.is_file() and not workflow_config.is_symlink():
+        paths.append(workflow_config)
+    paths.extend(path for path in files(root) if path.is_file() and not path.is_symlink())
+    unique = {path.relative_to(root).as_posix(): path for path in paths}
+    return [unique[name] for name in sorted(unique)]
 
 
-def _render_pages(root: Path, indexed: dict[str, list[dict[str, str]]], output: Path) -> dict[str, str]:
-    facts = detect(root)
-    documents = indexed["documents"]
-    source_documents = [item for item in documents if Path(item["path"]).suffix.lower() in SOURCE_SUFFIXES]
-    symbols_by_path: dict[str, list[str]] = {}
-    for item in indexed["symbols"]:
-        symbols_by_path.setdefault(item["path"], []).append(item["name"])
-
-    overview_path = root / ".okf" / "application" / "overview.md"
-    overview = _curated_overview(root)
-    if overview_path.is_file():
-        overview_link = _relative_link(output, overview_path, ".okf/application/overview.md")
-        overview_section = f"See {overview_link} for the source overview."
-        if overview:
-            overview_section += f"\n\n{overview}"
-    else:
-        overview_section = "No curated application overview has been added yet."
-    languages = ", ".join(facts["languages"]) or "unknown"
-    manifests = ", ".join(f"`{name}`" for name in facts["manifests"]) or "none detected"
-    index_body = (
-        "## Curated application overview\n\n"
-        f"{overview_section}\n\n"
-        "## Detected repository facts\n\n"
-        f"- Languages detected from recognized manifests: {languages}\n"
-        f"- Recognized manifests: {manifests}\n"
-        f"- Indexed source files: {len(source_documents)}\n\n"
-        "## Code reference\n\n"
-        "- [Indexed files, symbols, and import edges](code-map.md)\n"
-    )
-
-    file_lines = ["## Indexed source files", ""]
-    if source_documents:
-        for document in source_documents:
-            relative = document["path"]
-            link = _relative_link(output, root / Path(relative), relative)
-            file_lines.append(f"- {link}")
-    else:
-        file_lines.append("No indexed files or symbols were found.")
-
-    symbol_lines = ["## Indexed symbols", ""]
-    if indexed["symbols"]:
-        for path in sorted(symbols_by_path):
-            names = sorted(symbols_by_path[path])
-            link = _relative_link(output, root / Path(path), path)
-            symbol_lines.append(f"- {link}: " + ", ".join(f"`{name}`" for name in names))
-    else:
-        symbol_lines.append("No indexed files or symbols were found.")
-
-    edge_lines = ["## Indexed import edges", ""]
-    if indexed["edges"]:
-        for edge in indexed["edges"]:
-            source = edge["source"]
-            link = _relative_link(output, root / Path(source), source)
-            edge_lines.append(f"- {link} → `{edge['target']}` ({edge['kind']})")
-    else:
-        edge_lines.append("No import edges were found in the index.")
-
-    code_map_body = "\n".join(file_lines + [""] + symbol_lines + [""] + edge_lines)
-    return {
-        "index.md": f"# Project Documentation\n\n{GENERATED_START}\n{index_body}{GENERATED_END}\n",
-        "code-map.md": f"# Code Map\n\n{GENERATED_START}\n{code_map_body}\n{GENERATED_END}\n",
-    }
-
-
-def _output_directory(root: Path, output: Path | None) -> Path:
+def _output_path(root: Path, output: Path | None) -> Path:
     root = root.resolve()
-    candidate = output if output is not None else Path("docs") / "reference"
+    candidate = output if output is not None else index_dir(root) / "site"
     if not candidate.is_absolute():
         candidate = root / candidate
     candidate = Path(os.path.abspath(candidate))
@@ -108,112 +45,176 @@ def _output_directory(root: Path, output: Path | None) -> Path:
         current = current / part
         if current.is_symlink():
             raise ValueError(f"Documentation output cannot traverse a symlink: {current}")
-    resolved = candidate.resolve()
+    target = candidate.resolve()
     try:
-        resolved.relative_to(root)
+        target.relative_to(root)
     except ValueError as exc:
         raise ValueError(f"Documentation output must stay inside the repository: {candidate}") from exc
-    return resolved
-
-
-def _managed_target(root: Path, output: Path, name: str) -> Path:
-    target = output / name
-    if target.is_symlink():
-        raise ValueError(f"Generated documentation page cannot be a symlink: {target}")
-    resolved = target.resolve()
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Generated documentation page must stay inside the repository: {target}") from exc
     return target
 
 
-def _generated_block(text: str) -> str | None:
-    starts = text.count(GENERATED_START)
-    ends = text.count(GENERATED_END)
-    if starts != 1 or ends != 1:
+def _digest(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def _title(path: Path, content: str) -> str:
+    for line in content.splitlines():
+        match = re.match(r"^#\s+(.+?)\s*#*\s*$", line)
+        if match:
+            return match.group(1)
+    return path.stem.replace("-", " ").replace("_", " ").title()
+
+
+def _read_json(path: Path) -> dict | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else None
+    except (OSError, json.JSONDecodeError):
         return None
-    start = text.index(GENERATED_START) + len(GENERATED_START)
-    end = text.index(GENERATED_END)
-    if end < start:
-        return None
-    return text[start:end].strip()
-
-
-def _merge_generated(existing: str | None, rendered: str) -> str:
-    if existing is None:
-        return rendered
-    expected = _generated_block(rendered)
-    if expected is None:
-        raise ValueError("Internal docs renderer produced an invalid generated block")
-    current = _generated_block(existing)
-    if current is None:
-        if GENERATED_START in existing or GENERATED_END in existing:
-            raise ValueError("Existing documentation has malformed OKF generated markers")
-        separator = "\n" if existing.endswith("\n") else "\n\n"
-        start = rendered.index(GENERATED_START)
-        return existing.rstrip() + separator + rendered[start:]
-    start = existing.index(GENERATED_START) + len(GENERATED_START)
-    end = existing.index(GENERATED_END)
-    replacement_start = rendered.index(GENERATED_START) + len(GENERATED_START)
-    replacement_end = rendered.index(GENERATED_END)
-    return existing[:start] + rendered[replacement_start:replacement_end] + existing[end:]
-
-
-def _render_expected(root: Path, output: Path) -> dict[str, str]:
-    return _render_pages(root, indexed_content(root), output)
 
 
 def build_docs(root: Path, output: Path | None = None) -> dict[str, object]:
-    """Build the deterministic, index-backed human reference pages on request."""
+    """Copy the curated knowledge bundle into a deterministic local wiki tree."""
     root = root.resolve()
-    destination = _output_directory(root, output)
+    target = _output_path(root, output)
     build_index(root)
-    rendered = _render_expected(root, destination)
-    updated: list[str] = []
-    page_paths: list[str] = []
-    for name, template in sorted(rendered.items()):
-        target = _managed_target(root, destination, name)
-        page_paths.append(target.relative_to(root).as_posix())
-        before = target.read_text(encoding="utf-8") if target.is_file() else None
-        after = _merge_generated(before, template)
-        if before != after:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(after, encoding="utf-8", newline="\n")
-            updated.append(target.relative_to(root).as_posix())
-    return {"output": destination.relative_to(root).as_posix(), "pages": page_paths, "updated": updated}
+    sources = _source_files(root)
+    source_hashes: dict[str, str] = {}
+    generated: dict[str, bytes] = {}
+    pages: list[tuple[str, str]] = []
+
+    for source in sources:
+        relative = source.relative_to(root).as_posix()
+        content = source.read_bytes()
+        source_hashes[relative] = _digest(content)
+        if source.suffix.lower() == ".md":
+            page_path = f"source/{relative}"
+            generated[page_path] = content
+            pages.append((page_path, _title(source, content.decode("utf-8", errors="replace"))))
+
+    facts = detect(root)
+    repository_page = (
+        f"# {root.name} Repository\n\n"
+        "## Detected project facts\n"
+        f"- Languages: {', '.join(facts['languages']) or 'unknown'}\n"
+        f"- Framework hints: {', '.join(facts['framework_hints']) or 'none'}\n"
+        f"- Manifests: {', '.join(facts['manifests']) or 'none'}\n\n"
+        "These facts are extracted from repository files. Curated explanations live in the linked knowledge pages.\n"
+    ).encode("utf-8")
+    generated["repository.md"] = repository_page
+    pages.insert(0, ("repository.md", f"{root.name} Repository"))
+
+    indexed = indexed_content(root)
+    code_map_lines = ["# Code Map", "", "## Indexed source files", ""]
+    def source_link(path: str) -> str:
+        relative = Path(os.path.relpath(root / Path(path), target)).as_posix()
+        return quote(relative, safe="/._-~")
+
+    source_documents = [
+        item for item in indexed["documents"]
+        if Path(item["path"]).suffix.lower() in {".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".java", ".cs", ".rb", ".php"}
+    ]
+    if source_documents:
+        for item in source_documents:
+            code_map_lines.append(f"- [`{item['path']}`]({source_link(item['path'])})")
+    else:
+        code_map_lines.append("No indexed source files were found.")
+    code_map_lines.extend(["", "## Indexed symbols", ""])
+    if indexed["symbols"]:
+        symbols_by_path: dict[str, list[str]] = {}
+        for item in indexed["symbols"]:
+            symbols_by_path.setdefault(item["path"], []).append(item["name"])
+        for path, names in sorted(symbols_by_path.items()):
+            code_map_lines.append(f"- [`{path}`]({source_link(path)}): " + ", ".join(f"`{name}`" for name in sorted(names)))
+    else:
+        code_map_lines.append("No indexed symbols were found.")
+    code_map_lines.extend(["", "## Indexed import edges", ""])
+    if indexed["edges"]:
+        for edge in indexed["edges"]:
+            code_map_lines.append(f"- [`{edge['source']}`]({source_link(edge['source'])}) → `{edge['target']}` ({edge['kind']})")
+    else:
+        code_map_lines.append("No import edges were found.")
+    generated["code-map.md"] = ("\n".join(code_map_lines) + "\n").encode("utf-8")
+    pages.insert(1, ("code-map.md", "Code Map"))
+
+    index_lines = [f"# {root.name} Repository Wiki", "", "## Pages", ""]
+    for page_path, title in pages:
+        index_lines.append(f"- [{title}]({quote(page_path, safe='/')})")
+    index_lines.append("")
+    generated["index.md"] = "\n".join(index_lines).encode("utf-8")
+
+    previous = _read_json(target / MANIFEST)
+    output_hashes = {name: _digest(content) for name, content in sorted(generated.items())}
+    manifest_data = {
+        "schema_version": 1,
+        "sources": source_hashes,
+        "outputs": output_hashes,
+    }
+    generated[MANIFEST] = (json.dumps(manifest_data, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+    # Remove only files previously recorded as generated by this tool.
+    if previous and isinstance(previous.get("outputs"), dict):
+        current_paths = set(output_hashes)
+        for stale_name in previous["outputs"]:
+            if not isinstance(stale_name, str):
+                continue
+            stale = (target / stale_name).resolve()
+            try:
+                stale.relative_to(target)
+            except ValueError:
+                continue
+            if stale_name not in current_paths and stale.is_file():
+                stale.unlink()
+
+    for name, content in generated.items():
+        destination = (target / name).resolve()
+        try:
+            destination.relative_to(target)
+        except ValueError as exc:
+            raise ValueError(f"Generated documentation path escapes output directory: {name}") from exc
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.exists() or destination.read_bytes() != content:
+            destination.write_bytes(content)
+
+    return {"output": str(target), "pages": len(pages), "sources": len(source_hashes)}
 
 
 def check_docs(root: Path, output: Path | None = None) -> dict[str, object]:
-    """Check generated pages against a fresh disposable index without writing docs."""
     root = root.resolve()
-    destination = _output_directory(root, output)
-    with tempfile.TemporaryDirectory(prefix="okf-docs-index-") as directory:
-        temp_root = Path(directory)
-        for source in files(root):
-            relative = source.relative_to(root)
-            target = temp_root / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target)
-        build_index(temp_root)
-        indexed = indexed_content(temp_root)
-        rendered = _render_pages(root, indexed, destination)
-
-    stale: list[str] = []
+    try:
+        target = _output_path(root, output)
+    except ValueError as exc:
+        return {"ok": False, "errors": [str(exc)], "output": str(output or index_dir(root) / "site")}
     errors: list[str] = []
-    for name, template in sorted(rendered.items()):
-        target = _managed_target(root, destination, name)
-        relative = target.relative_to(root).as_posix()
-        if not target.is_file():
-            stale.append(relative)
-            errors.append(f"Missing generated documentation: {relative}; run `okf-agent docs build`.")
-            continue
-        actual = _generated_block(target.read_text(encoding="utf-8"))
-        expected = _generated_block(template)
-        if actual is None:
-            stale.append(relative)
-            errors.append(f"Malformed generated block in {relative}; repair it or run `okf-agent docs build`.")
-        elif actual != expected:
-            stale.append(relative)
-            errors.append(f"Generated documentation is stale: {relative}; run `okf-agent docs build`.")
-    return {"ok": not errors, "stale": stale, "errors": errors}
+    manifest = _read_json(target / MANIFEST)
+    if not manifest or manifest.get("schema_version") != 1:
+        return {"ok": False, "errors": ["Documentation build is missing or has an invalid manifest; run `okf-agent docs build`"], "output": str(target)}
+
+    try:
+        current_sources = {path.relative_to(root).as_posix(): _digest(path.read_bytes()) for path in _source_files(root)}
+    except (OSError, ValueError) as exc:
+        return {"ok": False, "errors": [str(exc)], "output": str(target)}
+    if manifest.get("sources") != current_sources:
+        errors.append("Documentation is stale because knowledge sources changed; run `okf-agent docs build`")
+
+    output_hashes = manifest.get("outputs")
+    if not isinstance(output_hashes, dict):
+        errors.append("Documentation manifest has no valid outputs map")
+    else:
+        for name, expected in output_hashes.items():
+            if not isinstance(name, str) or not isinstance(expected, str):
+                errors.append("Documentation manifest contains an invalid output entry")
+                continue
+            path = (target / name).resolve()
+            try:
+                path.relative_to(target)
+            except ValueError:
+                errors.append(f"Generated documentation path escapes output directory: {name}")
+                continue
+            try:
+                unchanged = path.is_file() and _digest(path.read_bytes()) == expected
+            except OSError:
+                unchanged = False
+            if not unchanged:
+                errors.append(f"Generated page is missing or changed: {name}")
+    return {"ok": not errors, "errors": errors, "output": str(target)}
