@@ -24,6 +24,18 @@ cargo run -- bundle search "lesson objectives" --root .\training --index-root .\
 
 The Rust index uses the same `.okf-index/knowledge.sqlite3` tables as the Python implementation. Both indexers can rebuild that disposable local index; use one writer at a time. The Rust binary is named `okf-agent-rs` and does not replace the Python-installed `okf-agent` command.
 
+## Python and Rust Entry Points
+
+`pipx install git+https://github.com/<owner>/okf-agent.git` continues to install the Python `okf-agent` command and importable `okf_agent` package. The Rust binary is separately installable from source:
+
+```powershell
+cargo install --git https://github.com/<owner>/okf-agent.git --bin okf-agent-rs
+```
+
+Python remains the default. Opt in to delegation for the Rust command families `index`, `update`, `validate`, `doctor`, `install`, `record-decision`, `workflow`, `bundle`, and `docs` by setting `OKF_AGENT_USE_RUST=1`. The Python launcher finds `okf-agent-rs` on `PATH`, or uses the path in `OKF_AGENT_RUST_BIN`. It checks for Rust version 0.1.1 or newer and checks the command against `okf-agent-rs capabilities`. Missing, old, or incomplete binaries produce a message and fall back to Python. `init`, `run`, `skills`, and `mcp` continue through Python until their delegation gates are met.
+
+The release artifact matrix is `okf-agent-rs-x86_64-pc-windows-msvc.zip`, `okf-agent-rs-x86_64-unknown-linux-gnu.tar.gz`, `okf-agent-rs-aarch64-unknown-linux-gnu.tar.gz`, `okf-agent-rs-x86_64-apple-darwin.tar.gz`, and `okf-agent-rs-aarch64-apple-darwin.tar.gz`. This repository does not yet publish those binaries automatically; use `cargo install` from the source until release automation is added. Python wheels remain pure Python and do not require Rust or bundle a native executable.
+
 Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. The default Rust build has no native watcher dependency; Python `run` retains its existing polling watcher behavior.
 
 The optional Rust MCP server is built with `--features mcp`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`. A default build prints an actionable feature-disabled response for `mcp`.
