@@ -7,7 +7,10 @@ use okf_application::repository_index::{
     ImportEdge, IndexReport, IndexStore, IndexedContent, IndexedDocument, IndexedSymbol, SearchHit,
     SourceDocument,
 };
-use okf_domain::diagnostics::{Diagnostic, ErrorKind};
+use okf_domain::{
+    diagnostics::{Diagnostic, ErrorKind},
+    paths::RepoPath,
+};
 use regex::Regex;
 use rusqlite::{Connection, params};
 
@@ -29,7 +32,7 @@ impl IndexStore for SqliteIndexStore {
         root: &Path,
         documents: &[SourceDocument],
     ) -> Result<IndexReport, Diagnostic> {
-        let path = db_path(root);
+        let path = db_path(root)?;
         std::fs::create_dir_all(path.parent().expect("database path has parent"))
             .map_err(|error| io_error(&path, error))?;
         let mut db = Connection::open(&path).map_err(|error| db_error(&path, error))?;
@@ -83,7 +86,7 @@ impl IndexStore for SqliteIndexStore {
     }
 
     fn search(&self, root: &Path, query: &str, limit: usize) -> Result<Vec<SearchHit>, Diagnostic> {
-        let path = db_path(root);
+        let path = db_path(root)?;
         if !path.is_file() {
             return Ok(Vec::new());
         }
@@ -112,7 +115,7 @@ impl IndexStore for SqliteIndexStore {
     }
 
     fn indexed_content(&self, root: &Path) -> Result<IndexedContent, Diagnostic> {
-        let path = db_path(root);
+        let path = db_path(root)?;
         if !path.is_file() {
             return Err(Diagnostic::new(
                 ErrorKind::NotFound,
@@ -169,8 +172,9 @@ impl IndexStore for SqliteIndexStore {
     }
 }
 
-fn db_path(root: &Path) -> PathBuf {
-    root.join(".okf-index").join("knowledge.sqlite3")
+fn db_path(root: &Path) -> Result<PathBuf, Diagnostic> {
+    let relative = RepoPath::new(root, Path::new(".okf-index/knowledge.sqlite3"))?;
+    Ok(root.join(relative.as_path()))
 }
 fn limit_as_i64(limit: usize) -> i64 {
     limit.min(i64::MAX as usize) as i64

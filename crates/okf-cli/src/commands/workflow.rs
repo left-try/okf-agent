@@ -117,12 +117,14 @@ struct AssessmentArgs {
 
 pub fn run(args: WorkflowArgs) -> i32 {
     match args.command {
-        WorkflowCommand::Show { path } => match okf_adapter_fs::load_workflow_policy(&path) {
-            Ok(policy) => print_json(&policy, 0),
-            Err(error) => print_json(&ErrorOutput { error }, 2),
-        },
+        WorkflowCommand::Show { path } => {
+            match okf_adapter_fs::load_workflow_policy(&super::root(&path)) {
+                Ok(policy) => print_json(&policy, 0),
+                Err(error) => print_json(&ErrorOutput { error }, 2),
+            }
+        }
         WorkflowCommand::Explain(args) | WorkflowCommand::Resolve(args) => {
-            let policy = match okf_adapter_fs::load_workflow_policy(&args.path) {
+            let policy = match okf_adapter_fs::load_workflow_policy(&super::root(&args.path)) {
                 Ok(policy) => policy,
                 Err(error) => return print_json(&ErrorOutput { error }, 2),
             };

@@ -113,3 +113,33 @@ fn malformed_fts_query_falls_back_to_like_search() {
         .unwrap();
     assert_eq!(store.search(&scratch.0, "[", 8).unwrap()[0].path, "a.md");
 }
+
+#[test]
+fn rebuild_rejects_an_index_directory_symlink_that_escapes_the_repository() {
+    let scratch = Scratch::new();
+    let outside = Scratch::new();
+    let link = scratch.0.join(".okf-index");
+    #[cfg(windows)]
+    let linked = std::os::windows::fs::symlink_dir(&outside.0, &link);
+    #[cfg(unix)]
+    let linked = std::os::unix::fs::symlink(&outside.0, &link);
+    #[cfg(not(any(windows, unix)))]
+    let linked: std::io::Result<()> = Err(std::io::Error::other("directory symlinks unsupported"));
+    if linked.is_err() {
+        eprintln!("skipping symlink escape assertion because symlink creation is unavailable");
+        return;
+    }
+
+    let error = SqliteIndexStore
+        .rebuild(
+            &scratch.0,
+            &[SourceDocument {
+                path: "source.rs".into(),
+                content: "fn safe() {}".into(),
+            }],
+        )
+        .unwrap_err();
+
+    assert!(error.to_string().contains("outside the repository root"));
+    assert!(!outside.0.join("knowledge.sqlite3").exists());
+}

@@ -39,7 +39,11 @@ impl BundleSource for FsBundleSource {
                 Diagnostic::new(ErrorKind::Io, error.to_string())
                     .at_path(path.to_string_lossy().to_string())
             })?;
-            let source = String::from_utf8(bytes.clone()).map_err(|error| {
+            let digest = Sha256::digest(&bytes)
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>();
+            let source = String::from_utf8(bytes).map_err(|error| {
                 Diagnostic::new(
                     ErrorKind::InvalidConfiguration,
                     format!("Markdown file is not valid UTF-8: {error}"),
@@ -52,10 +56,6 @@ impl BundleSource for FsBundleSource {
                 .map_err(|error| Diagnostic::new(ErrorKind::InvalidPath, error.to_string()))?
                 .to_string_lossy()
                 .replace('\\', "/");
-            let digest = Sha256::digest(&bytes)
-                .iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect::<String>();
             pages.push(RawPage {
                 path: relative,
                 metadata,

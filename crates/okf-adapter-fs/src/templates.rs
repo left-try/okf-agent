@@ -206,6 +206,7 @@ pub fn initialize(
             error.to_string(),
         )
     })?;
+    crate::paths::RepoPath::new(&root, std::path::Path::new(".okf-index"))?;
     let mut created = Vec::new();
     for (relative, template) in REQUIRED_FILES {
         let path =
@@ -243,7 +244,8 @@ pub fn initialize(
         created.extend(installed.updated);
     }
     for relative in [".okf/decisions", ".okf/changes", ".okf-index"] {
-        std::fs::create_dir_all(root.join(relative)).map_err(|error| {
+        let safe_path = crate::paths::RepoPath::new(&root, std::path::Path::new(relative))?;
+        std::fs::create_dir_all(root.join(safe_path.as_path())).map_err(|error| {
             okf_domain::diagnostics::Diagnostic::new(
                 okf_domain::diagnostics::ErrorKind::Io,
                 error.to_string(),

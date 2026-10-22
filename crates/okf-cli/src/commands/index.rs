@@ -10,12 +10,13 @@ pub struct IndexArgs {
 }
 
 pub fn run(args: IndexArgs) -> i32 {
-    if let Err(error) = okf_adapter_fs::templates::initialize(&args.path, &[]) {
+    let root = super::root(&args.path);
+    if let Err(error) = okf_adapter_fs::templates::initialize(&root, &[]) {
         println!("{}", serde_json::json!({"error": error}));
         return 2;
     }
     let result = okf_application::repository_index::build(
-        &args.path,
+        &root,
         &okf_adapter_fs::discovery::FsSourceCatalog,
         &okf_adapter_sqlite::repository::SqliteIndexStore,
     );
