@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TaskType {
+    #[default]
     Feature,
     Bugfix,
     Hotfix,
@@ -164,7 +165,7 @@ fn builtin_defaults() -> BTreeMap<TaskType, Vec<WorkflowMethod>> {
     ])
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WorkflowAssessment {
     pub primary_type: TaskType,
     #[serde(default)]

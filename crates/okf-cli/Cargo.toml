@@ -16,6 +16,7 @@ watcher = ["dep:notify"]
 [dependencies]
 clap.workspace = true
 okf-application = { path = "../okf-application" }
+okf-domain = { path = "../okf-domain" }
 okf-adapter-fs = { path = "../okf-adapter-fs" }
 okf-adapter-sqlite = { path = "../okf-adapter-sqlite" }
 okf-adapter-git = { path = "../okf-adapter-git" }

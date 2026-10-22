@@ -4,17 +4,21 @@
 # Current change context
 
 <!-- okf:generated:start -->
-Updated: 2026-10-22T14:12:56.249244+00:00
+Updated: 2026-10-22T14:19:11.312511+00:00
 
 Changed files:
-- `crates/okf-domain/src/diagnostics.rs`
-- `crates/okf-domain/src/paths.rs`
+- `crates/okf-application/src/workflow.rs`
+- `crates/okf-application/src/lib.rs`
+- `crates/okf-application/tests/workflow_resolution.rs`
+- `crates/okf-adapter-fs/src/lib.rs`
+- `crates/okf-adapter-fs/Cargo.toml`
+- `crates/okf-cli/src/commands.rs`
+- `crates/okf-cli/src/commands/workflow.rs`
+- `crates/okf-cli/Cargo.toml`
+- `crates/okf-cli/tests/workflow_cli.rs`
+- `crates/okf-cli/tests/command_contract.rs`
 - `crates/okf-domain/src/workflow.rs`
-- `crates/okf-adapter-fs/src/paths.rs`
-- `crates/okf-adapter-fs/src/yaml.rs`
-- `crates/okf-domain/tests/repository_paths.rs`
-- `crates/okf-domain/tests/workflow_policy.rs`
-- `crates/okf-adapter-fs/tests/yaml_values.rs`
+<!-- okf:generated:end -->
 <!-- okf:generated:end -->
 <!-- okf:generated:end -->
 <!-- okf:generated:end -->

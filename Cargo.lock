@@ -600,6 +600,7 @@ dependencies = [
  "okf-domain",
  "serde",
  "serde-saphyr",
+ "serde_json",
  "walkdir",
 ]
 
@@ -652,6 +653,7 @@ dependencies = [
  "okf-adapter-mcp",
  "okf-adapter-sqlite",
  "okf-application",
+ "okf-domain",
  "serde",
  "serde_json",
 ]
