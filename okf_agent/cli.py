@@ -15,6 +15,7 @@ from .knowledge import initialize
 from .lifecycle import refresh_knowledge
 from .mcp import create_bundle_server, create_server, context
 from .onboarding import install_codex_skill
+from .skills import apply_profile, doctor as skills_doctor
 from .paths import find_root
 from .validation import validate
 from .workflows import (
@@ -74,6 +75,13 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--profiles", help="Opt in to comma-separated workflow profiles (sdd,tdd,gtdd)")
     install_parser = subs.add_parser("install", help="Install the automatic Codex skill for this user")
     install_parser.add_argument("--skills-dir", type=Path, help="Override the Codex skills directory")
+    skills = subs.add_parser("skills", help="Install and inspect optional external agent plugins")
+    skills_subs = skills.add_subparsers(dest="skills_command", required=True)
+    apply_skills = skills_subs.add_parser("apply", help="Apply an external skills profile")
+    apply_skills.add_argument("profile", choices=("default",))
+    apply_skills.add_argument("--agent", default="codex", choices=("codex",))
+    check_skills = skills_subs.add_parser("doctor", help="Inspect Codex plugin marketplaces and plugins")
+    check_skills.add_argument("--agent", default="codex", choices=("codex",))
     run = subs.add_parser("run", help="Prepare a repository for an agent and optionally launch its client"); run.add_argument("agent"); run.add_argument("path", nargs="?", default="."); run.add_argument("--no-launch", action="store_true")
     mcp = subs.add_parser("mcp"); mcp.add_argument("--repo", default=".")
     mcp.add_argument("--profile", choices=("repository", "bundle"), default="repository")
@@ -139,6 +147,16 @@ def main(argv: list[str] | None = None) -> int:
             emit(graph_query(args.index_root, args.path, args.depth)); return 0
     if args.command == "install":
         emit({"skill": str(install_codex_skill(args.skills_dir)), "next": "Restart Codex to discover the skill, then work normally in any repository."}); return 0
+    if args.command == "skills":
+        try:
+            result = apply_profile(args.profile, args.agent) if args.skills_command == "apply" else skills_doctor(args.agent)
+            emit(result)
+            if args.skills_command == "apply":
+                return 0
+            return 0 if result.get("ok", False) else 1
+        except (OSError, RuntimeError, ValueError) as exc:
+            emit({"error": str(exc)})
+            return 2
     if args.command == "init":
         profiles = tuple(part.strip() for part in args.profiles.split(",") if part.strip()) if args.profiles else None
         try:

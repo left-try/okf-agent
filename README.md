@@ -107,6 +107,17 @@ okf-agent workflow resolve . --type feature --risk strict --stateful --execution
 
 CLI and MCP use the same resolver. The task assessment is explicit; OKF does not infer arbitrary task semantics from prose. Independent GTDD requires separate coder, tester, and auditor contexts plus controlled handoffs. Until an executor provides those capabilities, resolution reports a single-agent adversarial review fallback. Installing GTDD profile documents does not create independent execution. OKF knowledge validation checks repository knowledge integrity and does not prove application tests passed.
 
+## Optional External Skills
+
+OKF can provision selected third-party Codex plugins without vendoring their files. The built-in `default` profile installs [Matt Pocock's engineering skills](https://github.com/mattpocock/skills) and [Ponytail](https://github.com/DietrichGebert/ponytail) through their official Codex plugin marketplaces:
+
+~~~powershell
+okf-agent skills apply default
+okf-agent skills doctor
+~~~
+
+This command requires the Codex CLI on `PATH` and uses `codex plugin marketplace add` and `codex plugin add`. It changes the user's Codex plugin setup, not the project. Start a new Codex task after installation. Ponytail includes lifecycle hooks; inspect and trust those hooks in Codex before enabling them. The external plugins update through Codex's marketplace/plugin lifecycle and are not pinned by OKF. To refresh marketplace sources manually, use `codex plugin marketplace upgrade`.
+
 ## Pasteable Agent Setup Prompt
 
 Users can paste this into any terminal-capable coding agent after replacing the GitHub URL:
