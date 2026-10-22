@@ -26,5 +26,6 @@ fn index_command_builds_a_local_sqlite_index_and_reports_counts() {
     assert_eq!(report["files"], 1);
     assert_eq!(report["symbols"], 1);
     assert!(root.join(".okf-index/knowledge.sqlite3").is_file());
+    assert!(root.join(".okf/manifest.yaml").is_file());
     fs::remove_dir_all(root).unwrap();
 }

@@ -35,7 +35,7 @@ fn capabilities_reports_only_the_rust_commands_that_are_ready() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout),
-        "{\"implemented\":[\"capabilities\",\"index\",\"workflow show\",\"workflow explain\",\"workflow resolve\",\"bundle index\",\"bundle update\",\"bundle validate\",\"bundle search\",\"bundle backlinks\",\"bundle neighborhood\",\"bundle export\"]}\n"
+        "{\"implemented\":[\"capabilities\",\"index\",\"workflow show\",\"workflow explain\",\"workflow resolve\",\"bundle index\",\"bundle update\",\"bundle validate\",\"bundle search\",\"bundle backlinks\",\"bundle neighborhood\",\"bundle export\",\"update\",\"validate\",\"doctor\",\"install\",\"record-decision\"]}\n"
     );
 }
 
