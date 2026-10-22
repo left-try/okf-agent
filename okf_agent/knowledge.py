@@ -13,6 +13,18 @@ GENERATED_START = "<!-- okf:generated:start -->"
 GENERATED_END = "<!-- okf:generated:end -->"
 
 
+def _ignore_local_index(root: Path) -> None:
+    gitignore = root / ".gitignore"
+    content = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
+    exact_rules = {".okf-index", ".okf-index/", "/.okf-index", "/.okf-index/"}
+    if any(line.strip() in exact_rules for line in content.splitlines()):
+        return
+
+    newline = "\r\n" if "\r\n" in content else "\n"
+    separator = "" if not content or content.endswith(("\n", "\r")) else newline
+    gitignore.write_text(content + separator + f".okf-index/{newline}", encoding="utf-8")
+
+
 def initialize(root: Path, profiles: Sequence[str] | None = None) -> list[Path]:
     created: list[Path] = []
     bundle = okf_dir(root)
@@ -27,6 +39,7 @@ def initialize(root: Path, profiles: Sequence[str] | None = None) -> list[Path]:
     if profiles:
         profile_result = install_profiles(root, profiles)
         created.extend(root / path for path in profile_result.created)
+    _ignore_local_index(root)
     index_dir(root).mkdir(parents=True, exist_ok=True)
     return created
 
