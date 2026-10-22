@@ -5,6 +5,7 @@ use std::ffi::OsString;
 use clap::{Parser, Subcommand};
 use serde_json::json;
 
+mod bundle;
 mod index;
 mod workflow;
 
@@ -27,6 +28,8 @@ enum Command {
     Workflow(workflow::WorkflowArgs),
     /// Build the disposable local repository index.
     Index(index::IndexArgs),
+    /// Index and query a standalone Markdown bundle.
+    Bundle(bundle::BundleArgs),
     /// Preserve a useful structured response for commands not ported yet.
     #[command(external_subcommand)]
     Unsupported(Vec<OsString>),
@@ -38,12 +41,13 @@ impl Cli {
             Command::Capabilities => {
                 println!(
                     "{}",
-                    json!({ "implemented": ["capabilities", "index", "workflow show", "workflow explain", "workflow resolve"] })
+                    json!({ "implemented": ["capabilities", "index", "workflow show", "workflow explain", "workflow resolve", "bundle index", "bundle update", "bundle validate", "bundle search", "bundle backlinks", "bundle neighborhood", "bundle export"] })
                 );
                 0
             }
             Command::Workflow(args) => workflow::run(args),
             Command::Index(args) => index::run(args),
+            Command::Bundle(args) => bundle::run(args),
             Command::Unsupported(arguments) => {
                 let command = arguments
                     .first()

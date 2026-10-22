@@ -1,6 +1,9 @@
 //! Filesystem, template, and serialization adapters.
 
+pub mod bundle;
 pub mod discovery;
+pub mod frontmatter;
+pub mod markdown_links;
 pub mod paths;
 pub mod yaml;
 

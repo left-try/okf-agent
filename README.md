@@ -14,6 +14,8 @@ The Rust workspace provides a native index and workflow CLI while the installed 
 cargo run -- index .
 cargo run -- workflow show .
 cargo run -- workflow resolve . --type feature --risk strict
+cargo run -- bundle index --root .\training --index-root .\training-index
+cargo run -- bundle search "lesson objectives" --root .\training --index-root .\training-index
 ```
 
 The Rust index uses the same `.okf-index/knowledge.sqlite3` tables as the Python implementation. Both indexers can rebuild that disposable local index; use one writer at a time. The Rust binary is named `okf-agent-rs` and does not replace the Python-installed `okf-agent` command.
