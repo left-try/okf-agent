@@ -55,6 +55,29 @@ fn update_then_validate_refreshes_repository_files_and_index() {
 }
 
 #[test]
+fn init_builds_knowledge_index_docs_and_optional_profiles() {
+    let scratch = Scratch::new();
+    fs::write(scratch.0.join("src.rs"), "fn sample() {}\n").unwrap();
+    let root = scratch.0.to_str().unwrap();
+    let output = run(&["init", root, "--profiles", "sdd,tdd"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        result["root"],
+        scratch.0.canonicalize().unwrap().to_string_lossy().as_ref()
+    );
+    assert!(result["index"]["files"].as_u64().unwrap() > 0);
+    assert!(result["docs"]["pages"].as_u64().unwrap() > 2);
+    assert!(result["artifacts"].is_array());
+    assert!(scratch.0.join(".okf/workflows/config.json").is_file());
+    assert!(scratch.0.join(".okf-index/site/manifest.json").is_file());
+}
+
+#[test]
 fn install_and_record_decision_return_machine_readable_paths() {
     let scratch = Scratch::new();
     let skills = scratch.0.join("skills");

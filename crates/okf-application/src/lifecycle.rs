@@ -15,8 +15,10 @@ pub struct ValidationReport {
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct InitReport {
     pub created: Vec<String>,
+    pub artifacts: Vec<String>,
     pub index: IndexReport,
     pub adapter_conflicts: Vec<String>,
+    pub docs: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -85,8 +87,10 @@ pub fn initialize(
     let installed = fs.install_adapters(root, git_dir.as_deref(), !profiles.is_empty())?;
     Ok(InitReport {
         created,
+        artifacts: installed.installed,
         index: index_report,
         adapter_conflicts: installed.conflicts,
+        docs: None,
     })
 }
 

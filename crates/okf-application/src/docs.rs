@@ -47,3 +47,24 @@ pub fn check(
 pub fn default_output(root: &Path) -> PathBuf {
     root.join(".okf-index/site")
 }
+
+pub fn initialize_with_docs(
+    root: &Path,
+    profiles: &[String],
+    fs: &impl crate::lifecycle::LifecycleFs,
+    git: &impl crate::lifecycle::GitPort,
+    catalog: &impl SourceCatalog,
+    index: &impl IndexStore,
+    docs_port: &impl DocsPort,
+) -> Result<crate::lifecycle::InitReport, Diagnostic> {
+    let mut report = crate::lifecycle::initialize(root, profiles, fs, git, catalog, index)?;
+    report.docs = Some(
+        serde_json::to_value(build(root, None, catalog, index, docs_port)?).map_err(|error| {
+            Diagnostic::new(
+                okf_domain::diagnostics::ErrorKind::InvalidConfiguration,
+                error.to_string(),
+            )
+        })?,
+    );
+    Ok(report)
+}

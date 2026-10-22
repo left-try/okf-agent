@@ -3,11 +3,54 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Args)]
+pub struct InitArgs {
+    #[arg(default_value = ".")]
+    pub path: PathBuf,
+    #[arg(long)]
+    pub profiles: Option<String>,
+}
+#[derive(Debug, Args)]
 pub struct UpdateArgs {
     #[arg(default_value = ".")]
     pub path: PathBuf,
     #[arg(long="changed-files",num_args=0..)]
     pub changed_files: Option<Vec<String>>,
+}
+pub fn initialize(args: InitArgs) -> i32 {
+    let root = root(&args.path);
+    let profiles = args
+        .profiles
+        .as_deref()
+        .map(|v| {
+            v.split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    match okf_application::docs::initialize_with_docs(
+        &root,
+        &profiles,
+        &okf_adapter_fs::lifecycle::FsLifecycle,
+        &okf_adapter_git::Git,
+        &okf_adapter_fs::discovery::FsSourceCatalog,
+        &okf_adapter_sqlite::repository::SqliteIndexStore,
+        &okf_adapter_fs::docs::FsDocs,
+    ) {
+        Ok(report) => {
+            let code = if report.adapter_conflicts.is_empty() {
+                0
+            } else {
+                1
+            };
+            emit(
+                &serde_json::json!({"root":root,"created":report.created,"artifacts":report.artifacts,"index":report.index,"docs":report.docs,"adapter_conflicts":report.adapter_conflicts}),
+                code,
+            )
+        }
+        Err(error) => diagnostic(error),
+    }
 }
 #[derive(Debug, Args)]
 pub struct ValidateArgs {

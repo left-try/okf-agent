@@ -9,6 +9,7 @@ mod bundle;
 mod docs;
 mod index;
 mod lifecycle;
+mod mcp;
 mod run;
 mod workflow;
 
@@ -27,6 +28,8 @@ pub struct Cli {
 enum Command {
     /// Show the commands implemented by this Rust binary.
     Capabilities,
+    /// Initialize repository knowledge, adapters, index, and local docs.
+    Init(lifecycle::InitArgs),
     /// Inspect or resolve the repository workflow policy.
     Workflow(workflow::WorkflowArgs),
     /// Build the disposable local repository index.
@@ -48,6 +51,8 @@ enum Command {
     Docs(docs::DocsArgs),
     /// Prepare a repository for an agent and optionally launch its client.
     Run(run::RunArgs),
+    /// Run the optional Model Context Protocol server over stdio.
+    Mcp(mcp::McpArgs),
     /// Preserve a useful structured response for commands not ported yet.
     #[command(external_subcommand)]
     Unsupported(Vec<OsString>),
@@ -59,10 +64,11 @@ impl Cli {
             Command::Capabilities => {
                 println!(
                     "{}",
-                    json!({ "implemented": ["capabilities", "index", "workflow show", "workflow explain", "workflow resolve", "bundle index", "bundle update", "bundle validate", "bundle search", "bundle backlinks", "bundle neighborhood", "bundle export", "update", "validate", "doctor", "install", "record-decision", "docs build", "docs check", "docs serve", "run"] })
+                    json!({ "implemented": ["capabilities", "init", "index", "workflow show", "workflow explain", "workflow resolve", "bundle index", "bundle update", "bundle validate", "bundle search", "bundle backlinks", "bundle neighborhood", "bundle export", "update", "validate", "doctor", "install", "record-decision", "docs build", "docs check", "docs serve", "run"] })
                 );
                 0
             }
+            Command::Init(args) => lifecycle::initialize(args),
             Command::Workflow(args) => workflow::run(args),
             Command::Index(args) => index::run(args),
             Command::Bundle(args) => bundle::run(args),
@@ -73,6 +79,7 @@ impl Cli {
             Command::RecordDecision(args) => lifecycle::record_decision(args),
             Command::Docs(args) => docs::run(args),
             Command::Run(args) => run::run(args),
+            Command::Mcp(args) => mcp::run(args),
             Command::Unsupported(arguments) => {
                 let command = arguments
                     .first()
