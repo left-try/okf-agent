@@ -8,17 +8,22 @@ Publish this repository to GitHub first. That is enough for users to install dir
 
 ## Rust Implementation Preview
 
-The Rust workspace provides a native index and workflow CLI while the installed Python `okf-agent` remains available for compatibility. From a Rust toolchain, build and run the Rust binary with:
+The Rust workspace provides native index, workflow, lifecycle, bundle, documentation, and agent-launch commands while the installed Python `okf-agent` remains available for compatibility. From a Rust toolchain, build and run the Rust binary with:
 
 ```powershell
 cargo run -- index .
 cargo run -- workflow show .
 cargo run -- workflow resolve . --type feature --risk strict
+cargo run -- docs build .
+cargo run -- docs check .
+cargo run -- run codex . --no-launch
 cargo run -- bundle index --root .\training --index-root .\training-index
 cargo run -- bundle search "lesson objectives" --root .\training --index-root .\training-index
 ```
 
 The Rust index uses the same `.okf-index/knowledge.sqlite3` tables as the Python implementation. Both indexers can rebuild that disposable local index; use one writer at a time. The Rust binary is named `okf-agent-rs` and does not replace the Python-installed `okf-agent` command.
+
+Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. The default Rust build has no native watcher dependency; Python `run` retains its existing polling watcher behavior.
 
 ```powershell
 # From a GitHub URL

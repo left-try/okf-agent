@@ -2,6 +2,7 @@
 
 pub mod bundle;
 pub mod discovery;
+pub mod docs;
 pub mod frontmatter;
 pub mod generated_blocks;
 pub mod instructions;
@@ -9,6 +10,7 @@ pub mod lifecycle;
 pub mod markdown_links;
 pub mod paths;
 pub mod templates;
+pub mod web;
 pub mod yaml;
 
 use std::fs;

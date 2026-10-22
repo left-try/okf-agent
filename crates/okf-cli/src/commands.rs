@@ -6,8 +6,10 @@ use clap::{Parser, Subcommand};
 use serde_json::json;
 
 mod bundle;
+mod docs;
 mod index;
 mod lifecycle;
+mod run;
 mod workflow;
 
 #[derive(Debug, Parser)]
@@ -42,6 +44,10 @@ enum Command {
     /// Record a repository decision.
     #[command(name = "record-decision")]
     RecordDecision(lifecycle::RecordDecisionArgs),
+    /// Build, check, or serve the local documentation wiki.
+    Docs(docs::DocsArgs),
+    /// Prepare a repository for an agent and optionally launch its client.
+    Run(run::RunArgs),
     /// Preserve a useful structured response for commands not ported yet.
     #[command(external_subcommand)]
     Unsupported(Vec<OsString>),
@@ -53,7 +59,7 @@ impl Cli {
             Command::Capabilities => {
                 println!(
                     "{}",
-                    json!({ "implemented": ["capabilities", "index", "workflow show", "workflow explain", "workflow resolve", "bundle index", "bundle update", "bundle validate", "bundle search", "bundle backlinks", "bundle neighborhood", "bundle export", "update", "validate", "doctor", "install", "record-decision"] })
+                    json!({ "implemented": ["capabilities", "index", "workflow show", "workflow explain", "workflow resolve", "bundle index", "bundle update", "bundle validate", "bundle search", "bundle backlinks", "bundle neighborhood", "bundle export", "update", "validate", "doctor", "install", "record-decision", "docs build", "docs check", "docs serve", "run"] })
                 );
                 0
             }
@@ -65,6 +71,8 @@ impl Cli {
             Command::Doctor(args) => lifecycle::doctor(args),
             Command::Install(args) => lifecycle::install(args),
             Command::RecordDecision(args) => lifecycle::record_decision(args),
+            Command::Docs(args) => docs::run(args),
+            Command::Run(args) => run::run(args),
             Command::Unsupported(arguments) => {
                 let command = arguments
                     .first()
@@ -80,4 +88,9 @@ impl Cli {
             }
         }
     }
+}
+
+fn root(path: &std::path::Path) -> std::path::PathBuf {
+    okf_adapter_git::repo_root(path)
+        .unwrap_or_else(|_| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf()))
 }
