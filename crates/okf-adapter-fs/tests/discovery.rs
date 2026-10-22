@@ -63,3 +63,14 @@ fn empty_repository_has_no_indexable_sources() {
     let scratch = Scratch::new();
     assert!(FsSourceCatalog.discover(&scratch.0).unwrap().is_empty());
 }
+
+#[test]
+fn truncates_at_500_000_unicode_characters_without_splitting_utf8() {
+    let scratch = Scratch::new();
+    let expected = format!("{}{}", "é".repeat(499_999), "🦀");
+    fs::write(scratch.0.join("large.rs"), format!("{expected}ignored")).unwrap();
+
+    let documents = FsSourceCatalog.discover(&scratch.0).unwrap();
+
+    assert_eq!(documents[0].content, expected);
+}

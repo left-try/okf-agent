@@ -27,3 +27,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+
+[[bench]]
+name = "indexing"
+harness = false

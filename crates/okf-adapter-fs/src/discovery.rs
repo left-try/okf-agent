@@ -92,8 +92,10 @@ impl SourceCatalog for FsSourceCatalog {
                 Diagnostic::new(ErrorKind::Io, error.to_string())
                     .at_path(relative.to_string_lossy().replace('\\', "/"))
             })?;
-            let content = String::from_utf8_lossy(&bytes).into_owned();
-            let content = content.chars().take(500_000).collect();
+            let mut content = String::from_utf8_lossy(&bytes).into_owned();
+            if let Some((byte_index, _)) = content.char_indices().nth(500_000) {
+                content.truncate(byte_index);
+            }
             files.push(SourceDocument {
                 path: relative.to_string_lossy().replace('\\', "/"),
                 content,

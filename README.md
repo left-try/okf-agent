@@ -174,3 +174,9 @@ okf-agent docs check . --output docs/reference
 `docs build` refreshes the SQLite index and writes a wiki with a page list, repository facts, curated `.okf/` pages, and `code-map.md`. The code map lists indexed source files, symbols, and import edges. `docs check` verifies source and generated-page hashes and exits nonzero when output is stale or changed.
 
 The generated pages show which files and symbols exist; they do not infer product behavior or architectural meaning. Add those explanations to `.okf/` or other curated Markdown pages. The default output remains local under `.okf-index/`; choose a different output path only when you want to keep the generated reference alongside the repository documentation.
+
+## Rust Indexing Performance
+
+Run the repeatable synthetic benchmark with `cargo bench -p okf-cli --bench indexing`. It reports the OS and architecture, and takes five isolated-process samples for cold indexing, a second unchanged full index, 30 FTS searches, and peak working set at 250-file and 2,000-file sizes. The peak-memory measurement is available on Windows and Linux.
+
+On Windows x86_64, the median cold-index time changed from 34 ms to 31 ms (250 files) and 189 ms to 178 ms (2,000 files) after removing an intermediate source-text allocation. The unchanged full-index medians were 27 ms to 29 ms and 190 ms to 185 ms; median peak working set was 9.37 MB to 9.34 MB and 12.27 MB to 12.37 MB. FTS medians were 1.23 ms to 1.32 ms and 3.43 ms to 3.80 ms per query. These small synthetic-run differences are noisy; they do not show a memory or search improvement. The implementation keeps the disposable full-rebuild path and existing schema, avoiding incremental-index recovery state without evidence to justify it.
