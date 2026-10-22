@@ -5,6 +5,7 @@ use std::ffi::OsString;
 use clap::{Parser, Subcommand};
 use serde_json::json;
 
+mod index;
 mod workflow;
 
 #[derive(Debug, Parser)]
@@ -24,6 +25,8 @@ enum Command {
     Capabilities,
     /// Inspect or resolve the repository workflow policy.
     Workflow(workflow::WorkflowArgs),
+    /// Build the disposable local repository index.
+    Index(index::IndexArgs),
     /// Preserve a useful structured response for commands not ported yet.
     #[command(external_subcommand)]
     Unsupported(Vec<OsString>),
@@ -35,11 +38,12 @@ impl Cli {
             Command::Capabilities => {
                 println!(
                     "{}",
-                    json!({ "implemented": ["capabilities", "workflow show", "workflow explain", "workflow resolve"] })
+                    json!({ "implemented": ["capabilities", "index", "workflow show", "workflow explain", "workflow resolve"] })
                 );
                 0
             }
             Command::Workflow(args) => workflow::run(args),
+            Command::Index(args) => index::run(args),
             Command::Unsupported(arguments) => {
                 let command = arguments
                     .first()

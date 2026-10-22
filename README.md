@@ -6,6 +6,18 @@
 
 Publish this repository to GitHub first. That is enough for users to install directly from its URL. Publishing to PyPI is optional, but makes the command shorter.
 
+## Rust Implementation Preview
+
+The Rust workspace provides a native index and workflow CLI while the installed Python `okf-agent` remains available for compatibility. From a Rust toolchain, build and run the Rust binary with:
+
+```powershell
+cargo run -- index .
+cargo run -- workflow show .
+cargo run -- workflow resolve . --type feature --risk strict
+```
+
+The Rust index uses the same `.okf-index/knowledge.sqlite3` tables as the Python implementation. Both indexers can rebuild that disposable local index; use one writer at a time. The Rust binary is named `okf-agent-rs` and does not replace the Python-installed `okf-agent` command.
+
 ```powershell
 # From a GitHub URL
 pipx install "git+https://github.com/<owner>/okf-agent.git"

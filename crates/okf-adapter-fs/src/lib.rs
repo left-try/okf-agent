@@ -1,5 +1,6 @@
 //! Filesystem, template, and serialization adapters.
 
+pub mod discovery;
 pub mod paths;
 pub mod yaml;
 
