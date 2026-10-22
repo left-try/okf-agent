@@ -17,6 +17,7 @@ cargo run -- workflow resolve . --type feature --risk strict
 cargo run -- docs build .
 cargo run -- docs check .
 cargo run -- run codex . --no-launch
+cargo run --features mcp -- mcp --repo .
 cargo run -- bundle index --root .\training --index-root .\training-index
 cargo run -- bundle search "lesson objectives" --root .\training --index-root .\training-index
 ```
@@ -24,6 +25,8 @@ cargo run -- bundle search "lesson objectives" --root .\training --index-root .\
 The Rust index uses the same `.okf-index/knowledge.sqlite3` tables as the Python implementation. Both indexers can rebuild that disposable local index; use one writer at a time. The Rust binary is named `okf-agent-rs` and does not replace the Python-installed `okf-agent` command.
 
 Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. The default Rust build has no native watcher dependency; Python `run` retains its existing polling watcher behavior.
+
+The optional Rust MCP server is built with `--features mcp`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`. A default build prints an actionable feature-disabled response for `mcp`.
 
 ```powershell
 # From a GitHub URL

@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [features]
 default = []
-mcp = ["okf-adapter-mcp/mcp"]
+mcp = ["okf-adapter-mcp/mcp", "dep:tokio"]
 watcher = ["dep:notify"]
 
 [dependencies]
@@ -22,6 +22,7 @@ okf-adapter-sqlite = { path = "../okf-adapter-sqlite" }
 okf-adapter-git = { path = "../okf-adapter-git" }
 okf-adapter-mcp = { path = "../okf-adapter-mcp" }
 notify = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 
