@@ -1,0 +1,9 @@
+[package]
+name = "okf-adapter-git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+okf-domain = { path = "../okf-domain" }
+okf-application = { path = "../okf-application" }

@@ -1,0 +1,12 @@
+[package]
+name = "okf-adapter-fs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+okf-domain = { path = "../okf-domain" }
+okf-application = { path = "../okf-application" }
+serde.workspace = true
+serde-saphyr.workspace = true
+walkdir.workspace = true

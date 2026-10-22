@@ -1,0 +1,1 @@
+//! Optional MCP delivery adapter.

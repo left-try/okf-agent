@@ -1,0 +1,14 @@
+[package]
+name = "okf-adapter-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+mcp = ["dep:rmcp", "dep:tokio"]
+
+[dependencies]
+okf-application = { path = "../okf-application" }
+rmcp = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }

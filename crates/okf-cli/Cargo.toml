@@ -1,0 +1,27 @@
+[package]
+name = "okf-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "okf-agent-rs"
+path = "src/main.rs"
+
+[features]
+default = []
+mcp = ["okf-adapter-mcp/mcp"]
+watcher = ["dep:notify"]
+
+[dependencies]
+clap.workspace = true
+okf-application = { path = "../okf-application" }
+okf-adapter-fs = { path = "../okf-adapter-fs" }
+okf-adapter-sqlite = { path = "../okf-adapter-sqlite" }
+okf-adapter-git = { path = "../okf-adapter-git" }
+okf-adapter-mcp = { path = "../okf-adapter-mcp" }
+notify = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
