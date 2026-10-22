@@ -4,11 +4,17 @@
 # Current change context
 
 <!-- okf:generated:start -->
-Updated: 2026-10-22T12:28:09.177764+00:00
+Updated: 2026-10-22T14:12:56.249244+00:00
 
 Changed files:
-- `okf_agent/skills.py`
-- `okf_agent/cli.py`
-- `README.md`
+- `crates/okf-domain/src/diagnostics.rs`
+- `crates/okf-domain/src/paths.rs`
+- `crates/okf-domain/src/workflow.rs`
+- `crates/okf-adapter-fs/src/paths.rs`
+- `crates/okf-adapter-fs/src/yaml.rs`
+- `crates/okf-domain/tests/repository_paths.rs`
+- `crates/okf-domain/tests/workflow_policy.rs`
+- `crates/okf-adapter-fs/tests/yaml_values.rs`
+<!-- okf:generated:end -->
 <!-- okf:generated:end -->
 <!-- okf:generated:end -->

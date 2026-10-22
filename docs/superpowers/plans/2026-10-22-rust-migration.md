@@ -83,13 +83,13 @@
 - [ ] **Step 4: Add the command contract test** asserting binary name, help availability, `--version`, and unsupported-command JSON/error behavior.
 - [ ] **Step 5: Run `cargo fmt --all -- --check`, `cargo check --workspace`, and `cargo test --workspace`**; require all to pass before committing `build: add Rust workspace and CLI shell`.
 
-## Task 2: Implement Domain Diagnostics, Repository Paths, and YAML Policy Types
+## Task 2: Implement Domain Diagnostics, Repository Paths, and YAML Parsing
 
 **Files:**
 - Create: `crates/okf-domain/src/diagnostics.rs`, `paths.rs`, `workflow.rs`
 - Create: `crates/okf-adapter-fs/src/paths.rs`, `yaml.rs`
 - Modify: crate roots and manifests
-- Test: `crates/okf-domain/tests/repository_paths.rs`, `crates/okf-adapter-fs/tests/yaml_config.rs`
+- Test: `crates/okf-domain/tests/repository_paths.rs`, `crates/okf-domain/tests/workflow_policy.rs`, `crates/okf-adapter-fs/tests/yaml_values.rs`
 
 **Interfaces:**
 - Produces `Diagnostic`, `ErrorKind`, `RepoPath`, workflow enums/structs, and `parse_yaml<T: DeserializeOwned>(source: &str, path: &RepoPath) -> Result<T, Diagnostic>`.
@@ -97,8 +97,8 @@
 
 - [ ] **Step 1: Add `RepoPath` contract tests** for relative input, absolute in-root input, spaces/Unicode, `..` traversal, Windows drive paths, and symlinks resolving outside the root.
 - [ ] **Step 2: Implement `RepoPath::new` and diagnostic serialization** using canonicalized existing ancestors for not-yet-created outputs; reject escapes before any write.
-- [ ] **Step 3: Add workflow type/config deserialization checks** for unknown keys, missing required values, invalid enum values, and malformed YAML.
-- [ ] **Step 4: Implement YAML parsing with `serde-saphyr`** and translate parser locations into path-aware diagnostics. Keep YAML parsing at adapter boundaries.
+- [ ] **Step 3: Add workflow policy JSON deserialization checks** for unknown keys, missing required values, and invalid enum values; the current `.okf/workflows/config.json` contract is JSON.
+- [ ] **Step 4: Add generic YAML value parsing checks** for a valid typed value and malformed YAML, then implement `parse_yaml` with `serde-saphyr` and translate parser locations into path-aware diagnostics. Keep YAML parsing at adapter boundaries.
 - [ ] **Step 5: Run the focused Rust tests and `cargo clippy --workspace --all-targets -- -D warnings`**; require clear path/config failures and no warnings before committing `feat: add Rust domain and path contracts`.
 
 ## Task 3: Port Workflow Resolution as the First Complete Vertical Slice
