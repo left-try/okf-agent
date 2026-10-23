@@ -1,17 +1,24 @@
-use std::{fs, path::PathBuf, process::Command};
+use std::{
+    fs,
+    path::PathBuf,
+    process::Command,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 struct Scratch(PathBuf);
 impl Scratch {
     fn new() -> Self {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
-            "okf-lifecycle-cli-{}-{}",
+            "okf-lifecycle-cli-{}-{}-{}",
             std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos()
         ));
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir(&path).unwrap();
         Self(path)
     }
 }
@@ -36,7 +43,9 @@ fn update_then_validate_refreshes_repository_files_and_index() {
     let update = run(&["update", root, "--changed-files", "main.rs"]);
     assert!(
         update.status.success(),
-        "{}",
+        "status: {}; stdout: {}; stderr: {}",
+        update.status,
+        String::from_utf8_lossy(&update.stdout),
         String::from_utf8_lossy(&update.stderr)
     );
     let result: serde_json::Value = serde_json::from_slice(&update.stdout).unwrap();
