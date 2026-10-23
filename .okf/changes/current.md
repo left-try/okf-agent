@@ -3,8 +3,11 @@
 <!-- okf:generated:start -->
 # Current change context
 
-Updated: 2026-10-23T10:44:40.072689+00:00
+Updated: 2026-10-23T10:47:45.797191+00:00
 
 Changed files:
-- `crates/okf-adapter-sqlite/tests/repository_index.rs`
+- `crates/okf-adapter-fs/tests/discovery.rs`
+- `crates/okf-adapter-fs/tests/generated_files.rs`
+- `crates/okf-adapter-fs/tests/yaml_values.rs`
+- `crates/okf-domain/tests/repository_paths.rs`
 <!-- okf:generated:end -->
