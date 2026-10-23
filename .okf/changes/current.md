@@ -3,9 +3,8 @@
 <!-- okf:generated:start -->
 # Current change context
 
-Updated: 2026-10-23T10:41:13.322579+00:00
+Updated: 2026-10-23T10:44:40.072689+00:00
 
 Changed files:
-- `crates/okf-cli/tests/lifecycle_cli.rs`
-- `crates/okf-cli/tests/index_cli.rs`
+- `crates/okf-adapter-sqlite/tests/repository_index.rs`
 <!-- okf:generated:end -->
