@@ -33,9 +33,10 @@ fn find(name: &str) -> Option<PathBuf> {
 }
 
 fn candidates(path: &std::path::Path) -> Vec<PathBuf> {
-    let mut paths = vec![path.to_path_buf()];
+    let paths = vec![path.to_path_buf()];
     #[cfg(windows)]
-    {
+    let paths = {
+        let mut paths = paths;
         if path.extension().is_none() {
             let extensions =
                 std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_owned());
@@ -46,7 +47,8 @@ fn candidates(path: &std::path::Path) -> Vec<PathBuf> {
                     .map(|extension| path.with_extension(extension.trim_start_matches('.'))),
             );
         }
-    }
+        paths
+    };
     paths
 }
 
