@@ -12,7 +12,7 @@ fn index_command_builds_a_local_sqlite_index_and_reports_counts() {
     ));
     fs::create_dir_all(&root).unwrap();
     fs::write(root.join("lib.rs"), "pub struct IndexedThing;").unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .arg("index")
         .arg(&root)
         .output()
@@ -50,7 +50,7 @@ fn index_from_a_nested_directory_uses_the_git_repository_root() {
         .unwrap();
     assert!(init.success());
 
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .arg("index")
         .arg(&nested)
         .output()
@@ -94,7 +94,7 @@ fn index_refuses_to_follow_an_escaping_index_directory_symlink() {
         return;
     }
 
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .arg("index")
         .arg(&root)
         .output()

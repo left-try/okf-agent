@@ -691,7 +691,7 @@ dependencies = [
 
 [[package]]
 name = "okf-adapter-fs"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "okf-application",
  "okf-domain",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "okf-adapter-git"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "okf-application",
  "okf-domain",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "okf-adapter-mcp"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "okf-adapter-fs",
  "okf-adapter-git",
@@ -729,7 +729,7 @@ dependencies = [
 
 [[package]]
 name = "okf-adapter-sqlite"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "okf-application",
  "okf-domain",
@@ -741,7 +741,7 @@ dependencies = [
 
 [[package]]
 name = "okf-application"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "okf-domain",
  "serde",
@@ -751,7 +751,7 @@ dependencies = [
 
 [[package]]
 name = "okf-cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "clap",
  "notify",
@@ -768,7 +768,7 @@ dependencies = [
 
 [[package]]
 name = "okf-domain"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",

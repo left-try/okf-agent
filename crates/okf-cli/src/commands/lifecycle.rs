@@ -151,14 +151,7 @@ fn root(path: &Path) -> PathBuf {
         .unwrap_or_else(|_| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf()))
 }
 fn executable(name: &str) -> bool {
-    std::env::var_os("PATH")
-        .into_iter()
-        .flat_map(|value| std::env::split_paths(&value).collect::<Vec<_>>())
-        .any(|directory| {
-            ["", ".exe", ".cmd", ".bat"]
-                .iter()
-                .any(|extension| directory.join(format!("{name}{extension}")).is_file())
-        })
+    super::process::contains(name)
 }
 fn diagnostic(error: okf_domain::diagnostics::Diagnostic) -> i32 {
     emit(&serde_json::json!({"error":error}), 2)

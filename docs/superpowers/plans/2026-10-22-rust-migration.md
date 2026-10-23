@@ -261,6 +261,8 @@
 
 ## Completion Criteria
 
+**User-directed release decision (2026-10-23):** Rust is the canonical CLI and the Python `okf-agent` console script is removed. Keep the Python modules importable as a compatibility library. Release the Rust binary as `okf-agent` with the command families and flags documented in README; do not require Python delegation for CLI use.
+
 - Every command family and both MCP profiles have Rust implementations over shared application use cases.
 - The existing Python package and `okf-agent` entry point continue to work during the transition.
 - Rust and Python behavior agree on CLI/JSON contracts for each capability before that capability is delegated.

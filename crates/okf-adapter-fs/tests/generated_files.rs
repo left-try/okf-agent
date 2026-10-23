@@ -67,6 +67,20 @@ fn initialization_preserves_partial_curated_files_and_installs_selected_profiles
 }
 
 #[test]
+fn initialization_ignores_local_index_and_preserves_existing_gitignore_content() {
+    let scratch = Scratch::new();
+    fs::write(scratch.0.join(".gitignore"), "build/\r\nuser-data/\r\n").unwrap();
+
+    templates::initialize(&scratch.0, &[]).unwrap();
+    templates::initialize(&scratch.0, &[]).unwrap();
+
+    let gitignore = fs::read_to_string(scratch.0.join(".gitignore")).unwrap();
+    assert!(gitignore.starts_with("build/\r\nuser-data/\r\n"));
+    assert!(gitignore.contains(".okf-index/\r\n"));
+    assert_eq!(gitignore.matches(".okf-index/").count(), 1);
+}
+
+#[test]
 fn adapter_install_keeps_curated_instructions_and_non_okf_hooks() {
     let scratch = Scratch::new();
     let git = scratch.0.join(".git");

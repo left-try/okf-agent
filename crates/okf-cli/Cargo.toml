@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [[bin]]
-name = "okf-agent-rs"
+name = "okf-agent"
 path = "src/main.rs"
 
 [features]

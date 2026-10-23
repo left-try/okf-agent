@@ -3,32 +3,30 @@
 <!-- okf:generated:start -->
 # Current change context
 
-<!-- okf:generated:start -->
-Updated: 2026-10-22T15:34:00.564975+00:00
+Updated: 2026-10-23T10:17:47.645753+00:00
 
 Changed files:
+- `Cargo.toml`
+- `Cargo.lock`
 - `README.md`
-- `crates/okf-adapter-fs/src/bundle.rs`
+- `pyproject.toml`
+- `okf_agent/cli.py`
 - `crates/okf-adapter-fs/src/templates.rs`
-- `crates/okf-adapter-sqlite/src/repository.rs`
-- `crates/okf-adapter-sqlite/tests/repository_index.rs`
-- `crates/okf-cli/src/commands/index.rs`
-- `crates/okf-cli/src/commands/workflow.rs`
+- `crates/okf-adapter-fs/tests/generated_files.rs`
+- `crates/okf-cli/Cargo.toml`
+- `crates/okf-cli/src/commands.rs`
+- `crates/okf-cli/src/commands/lifecycle.rs`
+- `crates/okf-cli/src/commands/run.rs`
+- `crates/okf-cli/src/commands/process.rs`
+- `crates/okf-cli/src/commands/skills.rs`
+- `crates/okf-cli/tests/bundle_cli.rs`
+- `crates/okf-cli/tests/command_contract.rs`
 - `crates/okf-cli/tests/index_cli.rs`
+- `crates/okf-cli/tests/lifecycle_cli.rs`
+- `crates/okf-cli/tests/mcp_contract.rs`
+- `crates/okf-cli/tests/run_cli.rs`
 - `crates/okf-cli/tests/workflow_cli.rs`
-- `crates/okf-cli/benches/results/windows-x86_64.json`
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
-<!-- okf:generated:end -->
+- `tests/test_rust_compat.py`
+- `.github/workflows/rust.yml`
+- `docs/superpowers/plans/2026-10-22-rust-migration.md`
 <!-- okf:generated:end -->

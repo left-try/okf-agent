@@ -21,7 +21,7 @@ impl Drop for Scratch {
     }
 }
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(args)
         .output()
         .unwrap()
@@ -75,6 +75,11 @@ fn init_builds_knowledge_index_docs_and_optional_profiles() {
     assert!(result["artifacts"].is_array());
     assert!(scratch.0.join(".okf/workflows/config.json").is_file());
     assert!(scratch.0.join(".okf-index/site/manifest.json").is_file());
+    assert!(
+        fs::read_to_string(scratch.0.join(".gitignore"))
+            .unwrap()
+            .contains(".okf-index/")
+    );
 }
 
 #[test]

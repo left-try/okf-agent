@@ -22,7 +22,7 @@ impl Drop for Scratch {
 }
 
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(args)
         .output()
         .unwrap()

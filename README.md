@@ -2,59 +2,37 @@
 
 `okf-agent` gives coding agents a repository-owned knowledge bundle in `.okf/` and a rebuildable local index in `.okf-index/`. It makes the same lifecycle available to Codex, Claude Code, Cursor, Gemini CLI, and any agent that follows repository instructions: retrieve context before a change, update knowledge after it, and validate before completion.
 
-## Distribute It
+## Install
 
-Publish this repository to GitHub first. That is enough for users to install directly from its URL. Publishing to PyPI is optional, but makes the command shorter.
-
-## Rust Implementation Preview
-
-The Rust workspace provides native index, workflow, lifecycle, bundle, documentation, and agent-launch commands while the installed Python `okf-agent` remains available for compatibility. From a Rust toolchain, build and run the Rust binary with:
+The supported `okf-agent` CLI is the Rust binary. Install it from the repository with a Rust toolchain:
 
 ```powershell
-cargo run -- index .
-cargo run -- workflow show .
-cargo run -- workflow resolve . --type feature --risk strict
-cargo run -- docs build .
-cargo run -- docs check .
-cargo run -- run codex . --no-launch
-cargo run --features mcp -- mcp --repo .
-cargo run -- bundle index --root .\training --index-root .\training-index
-cargo run -- bundle search "lesson objectives" --root .\training --index-root .\training-index
+cargo install --git https://github.com/left-try/okf-agent.git --locked --bin okf-agent
 ```
 
-The Rust index uses the same `.okf-index/knowledge.sqlite3` tables as the Python implementation. Both indexers can rebuild that disposable local index; use one writer at a time. The Rust binary is named `okf-agent-rs` and does not replace the Python-installed `okf-agent` command.
+Check the GitHub Releases page for prebuilt binaries. When a matching binary is not available, install directly from the repository with Cargo as shown above.
 
-## Python and Rust Entry Points
+The Python package remains available for existing `okf_agent` imports, but it no longer installs an `okf-agent` command. The Rust CLI is the only supported command-line implementation.
 
-`pipx install git+https://github.com/<owner>/okf-agent.git` continues to install the Python `okf-agent` command and importable `okf_agent` package. The Rust binary is separately installable from source:
+## Commands
+
+From a checkout, build and run the Rust CLI with:
 
 ```powershell
-cargo install --git https://github.com/<owner>/okf-agent.git --bin okf-agent-rs
+cargo run --locked -- index .
+cargo run --locked -- workflow show .
+cargo run --locked -- workflow resolve . --type feature --risk strict
+cargo run --locked -- docs build .
+cargo run --locked -- docs check .
+cargo run --locked -- run codex . --no-launch
+cargo run --locked -- skills doctor
+cargo run --locked -- bundle index --root .\training --index-root .\training-index
+cargo run --locked -- bundle search "lesson objectives" --root .\training --index-root .\training-index
 ```
 
-Python remains the default. Opt in to delegation for the Rust command families `index`, `update`, `validate`, `doctor`, `install`, `record-decision`, `workflow`, `bundle`, and `docs` by setting `OKF_AGENT_USE_RUST=1`. The Python launcher finds `okf-agent-rs` on `PATH`, or uses the path in `OKF_AGENT_RUST_BIN`. It checks for Rust version 0.1.1 or newer and checks the command against `okf-agent-rs capabilities`. Missing, old, or incomplete binaries produce a message and fall back to Python. `init`, `run`, `skills`, and `mcp` continue through Python until their delegation gates are met.
+The Rust index uses `.okf-index/knowledge.sqlite3` as its disposable local index. `init` creates it, builds the local wiki, and adds `.okf-index/` to `.gitignore` while preserving existing content.
 
-The release artifact matrix is `okf-agent-rs-x86_64-pc-windows-msvc.zip`, `okf-agent-rs-x86_64-unknown-linux-gnu.tar.gz`, `okf-agent-rs-aarch64-unknown-linux-gnu.tar.gz`, `okf-agent-rs-x86_64-apple-darwin.tar.gz`, and `okf-agent-rs-aarch64-apple-darwin.tar.gz`. This repository does not yet publish those binaries automatically; use `cargo install` from the source until release automation is added. Python wheels remain pure Python and do not require Rust or bundle a native executable.
-
-Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. The default Rust build has no native watcher dependency; Python `run` retains its existing polling watcher behavior.
-
-The optional Rust MCP server is built with `--features mcp`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`. A default build prints an actionable feature-disabled response for `mcp`.
-
-```powershell
-# From a GitHub URL
-pipx install "git+https://github.com/<owner>/okf-agent.git"
-
-# After publishing the package to PyPI
-pipx install okf-agent
-```
-
-To publish a release to PyPI, build a wheel and upload it from a tagged, tested commit:
-
-```powershell
-python -m pip install build twine
-python -m build
-python -m twine upload dist/*
-```
+Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. Install the optional MCP server with `cargo install --git https://github.com/left-try/okf-agent.git --locked --features mcp --bin okf-agent`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`.
 
 ## One-Time User Setup
 
@@ -75,7 +53,7 @@ Existing instruction files are preserved and receive one OKF protocol block. Exi
 
 Initialization adds `.okf-index/` to the repository's `.gitignore` so the rebuildable local index stays out of version control. Existing `.gitignore` content is preserved.
 
-The current CLI includes the `docs` and `bundle` command groups and the `init --profiles` option documented below. After a new release is published, upgrade an existing installation to receive these commands; for a Git-based pipx install, reinstall from the repository URL.
+The Rust `okf-agent` CLI includes the `docs` and `bundle` command groups and the `init --profiles` option documented below. Reinstall with `cargo install --git https://github.com/left-try/okf-agent.git --locked --bin okf-agent` to receive the current commands.
 
 The wiki is generated into `.okf-index/site/`, which is local and rebuildable. It has a page list, project facts, copies of `.okf/` Markdown pages, and simple text search. Start the read-only local web UI with:
 
@@ -161,7 +139,7 @@ This command requires the Codex CLI on `PATH` and uses `codex plugin marketplace
 Users can paste this into any terminal-capable coding agent after replacing the GitHub URL:
 
 ```text
-Install OKF Repository Brain from git+https://github.com/<owner>/okf-agent.git using pipx, then run `okf-agent init .` in this repository. Do not overwrite existing agent instruction files or existing non-OKF Git hooks. After setup, run `okf-agent validate .` and report the generated adapter files.
+Install OKF Repository Brain with Cargo, then run `okf-agent init .` in this repository. Do not overwrite existing agent instruction files or existing non-OKF Git hooks. After setup, run `okf-agent validate .` and report the generated adapter files.
 ```
 
 Once initialized, the repository carries its own setup; collaborators only need the `okf-agent` CLI installed. `.okf/` is committed, while `.okf-index/` is local and can be deleted and rebuilt.

@@ -253,5 +253,48 @@ pub fn initialize(
             .at_path(relative)
         })?;
     }
+    ignore_local_index(&root)?;
     Ok(created)
+}
+
+fn ignore_local_index(root: &std::path::Path) -> Result<(), okf_domain::diagnostics::Diagnostic> {
+    use okf_domain::diagnostics::{Diagnostic, ErrorKind};
+    use std::path::Path;
+
+    let relative = ".gitignore";
+    let safe_path = crate::paths::RepoPath::new(root, Path::new(relative))?;
+    let path = root.join(safe_path.as_path());
+    let content = if path.is_file() {
+        std::fs::read_to_string(&path)
+            .map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()).at_path(relative))?
+    } else if path.exists() {
+        return Err(
+            Diagnostic::new(ErrorKind::InvalidPath, ".gitignore must be a regular file")
+                .at_path(relative),
+        );
+    } else {
+        String::new()
+    };
+
+    let exact_rules = [".okf-index", ".okf-index/", "/.okf-index", "/.okf-index/"];
+    if content
+        .lines()
+        .any(|line| exact_rules.contains(&line.trim()))
+    {
+        return Ok(());
+    }
+
+    let newline = if content.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let separator = if content.is_empty() || content.ends_with(['\n', '\r']) {
+        ""
+    } else {
+        newline
+    };
+    let updated = format!("{content}{separator}.okf-index/{newline}");
+    std::fs::write(&path, updated)
+        .map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()).at_path(relative))
 }

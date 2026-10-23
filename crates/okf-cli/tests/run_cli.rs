@@ -16,7 +16,7 @@ fn temp() -> std::path::PathBuf {
 #[test]
 fn run_no_launch_prepares_repository_and_returns_context() {
     let root = temp();
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(["run", "codex", root.to_str().unwrap(), "--no-launch"])
         .output()
         .unwrap();
@@ -39,7 +39,7 @@ fn run_no_launch_prepares_repository_and_returns_context() {
 #[test]
 fn run_aliases_and_missing_client_keep_expected_behavior() {
     let root = temp();
-    let alias = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let alias = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(["run", "claude-code", root.to_str().unwrap()])
         .env("PATH", "")
         .output()

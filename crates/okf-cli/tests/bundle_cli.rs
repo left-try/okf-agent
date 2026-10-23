@@ -21,7 +21,7 @@ impl Drop for Scratch {
     }
 }
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(args)
         .output()
         .unwrap()
@@ -57,7 +57,7 @@ fn bundle_commands_index_search_traverse_export_and_keep_source_read_only() {
         String::from_utf8_lossy(&indexed.stderr)
     );
     let report: serde_json::Value = serde_json::from_slice(&indexed.stdout).unwrap();
-    assert_eq!(report["documents"], 2);
+    assert_eq!(report["documents"], 2, "index report: {report}");
     assert!(report["conformant"].as_bool().unwrap());
     let search = run(&[
         "bundle",
@@ -82,7 +82,11 @@ fn bundle_commands_index_search_traverse_export_and_keep_source_read_only() {
         "1",
     ]);
     let graph: serde_json::Value = serde_json::from_slice(&graph.stdout).unwrap();
-    assert_eq!(graph["nodes"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        graph["nodes"].as_array().unwrap().len(),
+        2,
+        "graph: {graph}"
+    );
     let exported = run(&[
         "bundle",
         "export",

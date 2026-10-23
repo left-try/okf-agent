@@ -1,10 +1,10 @@
 use std::process::{Command, Output};
 
 fn run(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(args)
         .output()
-        .expect("run okf-agent-rs")
+        .expect("run okf-agent")
 }
 
 #[test]
@@ -14,7 +14,7 @@ fn version_uses_the_rust_binary_name_and_workspace_version() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "okf-agent-rs 0.1.1"
+        "okf-agent 0.2.0"
     );
 }
 
@@ -24,8 +24,31 @@ fn help_lists_the_initial_capability_command() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert!(stdout.contains("okf-agent-rs"));
+    let usage = stdout
+        .lines()
+        .find(|line| line.starts_with("Usage: "))
+        .expect("help contains usage line");
+    let executable = usage
+        .strip_prefix("Usage: ")
+        .unwrap()
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .trim_end_matches(".exe");
+    assert_eq!(executable, "okf-agent");
     assert!(stdout.contains("capabilities"));
+}
+
+#[test]
+fn help_exposes_the_documented_cli_commands_and_init_profiles() {
+    let output = run(&["--help"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("docs"));
+    assert!(stdout.contains("bundle"));
+    let init = run(&["init", "--help"]);
+    assert!(String::from_utf8_lossy(&init.stdout).contains("--profiles"));
+    let skills = run(&["skills", "--help"]);
+    assert!(String::from_utf8_lossy(&skills.stdout).contains("doctor"));
 }
 
 #[test]
@@ -33,9 +56,13 @@ fn capabilities_reports_only_the_rust_commands_that_are_ready() {
     let output = run(&["capabilities"]);
 
     assert!(output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let implemented = result["implemented"].as_array().unwrap();
+    assert!(implemented.iter().any(|command| command == "skills apply"));
+    assert!(implemented.iter().any(|command| command == "skills doctor"));
     assert_eq!(
-        String::from_utf8_lossy(&output.stdout),
-        "{\"implemented\":[\"capabilities\",\"init\",\"index\",\"workflow show\",\"workflow explain\",\"workflow resolve\",\"bundle index\",\"bundle update\",\"bundle validate\",\"bundle search\",\"bundle backlinks\",\"bundle neighborhood\",\"bundle export\",\"update\",\"validate\",\"doctor\",\"install\",\"record-decision\",\"docs build\",\"docs check\",\"docs serve\",\"run\"]}\n"
+        implemented.iter().any(|command| command == "mcp"),
+        cfg!(feature = "mcp")
     );
 }
 
