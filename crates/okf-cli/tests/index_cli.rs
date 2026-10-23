@@ -103,7 +103,7 @@ fn index_refuses_to_follow_an_escaping_index_directory_symlink() {
     assert_eq!(output.status.code(), Some(2));
     assert!(!outside.join("knowledge.sqlite3").exists());
     assert!(!root.join(".okf/manifest.yaml").exists());
-    fs::remove_file(link).unwrap();
+    fs::remove_dir(link).unwrap();
     fs::remove_dir_all(root).unwrap();
     fs::remove_dir_all(outside).unwrap();
 }
