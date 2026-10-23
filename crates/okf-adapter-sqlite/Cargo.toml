@@ -1,0 +1,13 @@
+[package]
+name = "okf-adapter-sqlite"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+okf-domain = { path = "../okf-domain" }
+okf-application = { path = "../okf-application" }
+rusqlite.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true

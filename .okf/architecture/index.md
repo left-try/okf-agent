@@ -2,7 +2,8 @@
 
 <!-- okf:generated:start -->
 ## Generated facts
-- Manifests: pyproject.toml
+- Manifests: Cargo.toml, pyproject.toml
+- Last refreshed: 2026-10-22T15:34:00.564975+00:00
 <!-- okf:generated:end -->
 
 ## Curated constraints

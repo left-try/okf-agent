@@ -1,0 +1,26 @@
+[package]
+name = "okf-adapter-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+mcp = ["dep:rmcp", "dep:tokio"]
+
+[dependencies]
+okf-application = { path = "../okf-application" }
+okf-domain = { path = "../okf-domain" }
+okf-adapter-fs = { path = "../okf-adapter-fs" }
+okf-adapter-git = { path = "../okf-adapter-git" }
+okf-adapter-sqlite = { path = "../okf-adapter-sqlite" }
+rmcp = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+walkdir.workspace = true
+
+[[test]]
+name = "tool_contract"
+path = "tests/tool_contract.rs"
+required-features = ["mcp"]

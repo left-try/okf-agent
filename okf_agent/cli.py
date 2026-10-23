@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,6 +17,7 @@ from .knowledge import initialize
 from .lifecycle import refresh_knowledge
 from .mcp import create_bundle_server, create_server, context
 from .onboarding import install_codex_skill
+from .skills import apply_profile, doctor as skills_doctor
 from .paths import find_root
 from .validation import validate
 from .workflows import (
@@ -32,6 +35,69 @@ from .web import serve_docs
 
 def emit(value: object) -> None:
     print(json.dumps(value, indent=2, default=str))
+
+
+_RUST_MIN_VERSION = (0, 1, 1)
+
+
+def _delegated_capability(arguments: list[str]) -> str | None:
+    """Return the completed Rust capability that owns these CLI arguments."""
+    if not arguments:
+        return None
+    command = arguments[0]
+    if command in {"index", "update", "validate", "doctor", "install", "record-decision"}:
+        return command
+    if command in {"workflow", "bundle", "docs"} and len(arguments) > 1:
+        return f"{command} {arguments[1]}"
+    return None
+
+
+def _version_tuple(output: str) -> tuple[int, int, int] | None:
+    match = re.search(r"\bokf-agent-rs\s+(\d+)\.(\d+)\.(\d+)", output)
+    return tuple(map(int, match.groups())) if match else None
+
+
+def _try_rust_delegation(arguments: list[str]) -> int | None:
+    """Delegate an explicitly opted-in, supported command; otherwise use Python."""
+    if os.environ.get("OKF_AGENT_USE_RUST", "").lower() not in {"1", "true", "yes"}:
+        return None
+    required = _delegated_capability(arguments)
+    if required is None:
+        return None
+
+    executable = os.environ.get("OKF_AGENT_RUST_BIN") or shutil.which("okf-agent-rs")
+    if not executable:
+        print("okf-agent: Rust delegation requested, but `okf-agent-rs` was not found; using Python.", file=sys.stderr)
+        return None
+
+    try:
+        version = subprocess.run([executable, "--version"], capture_output=True, text=True, check=False)
+    except OSError as error:
+        print(f"okf-agent: cannot start Rust binary ({error}); using Python.", file=sys.stderr)
+        return None
+    parsed_version = _version_tuple(version.stdout)
+    if version.returncode != 0 or parsed_version is None or parsed_version < _RUST_MIN_VERSION:
+        print("okf-agent: Rust binary is missing a supported version (requires >= 0.1.1); using Python.", file=sys.stderr)
+        return None
+
+    try:
+        capabilities = subprocess.run([executable, "capabilities"], capture_output=True, text=True, check=False)
+    except OSError as error:
+        print(f"okf-agent: cannot inspect Rust binary capabilities ({error}); using Python.", file=sys.stderr)
+        return None
+    try:
+        implemented = json.loads(capabilities.stdout)["implemented"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        implemented = []
+    if capabilities.returncode != 0 or required not in implemented:
+        print(f"okf-agent: Rust binary does not advertise `{required}` support; using Python.", file=sys.stderr)
+        return None
+
+    try:
+        return subprocess.run([executable, *arguments], check=False).returncode
+    except OSError as error:
+        print(f"okf-agent: cannot start Rust command ({error}); using Python.", file=sys.stderr)
+        return None
 
 
 def command_init(root: Path, profiles: tuple[str, ...] | None = None) -> dict:
@@ -64,6 +130,10 @@ def command_init(root: Path, profiles: tuple[str, ...] | None = None) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    delegated = _try_rust_delegation(arguments)
+    if delegated is not None:
+        return delegated
     parser = argparse.ArgumentParser(prog="okf-agent")
     subs = parser.add_subparsers(dest="command", required=True)
     for name in ("init", "index", "update", "validate", "doctor"):
@@ -74,6 +144,13 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--profiles", help="Opt in to comma-separated workflow profiles (sdd,tdd,gtdd)")
     install_parser = subs.add_parser("install", help="Install the automatic Codex skill for this user")
     install_parser.add_argument("--skills-dir", type=Path, help="Override the Codex skills directory")
+    skills = subs.add_parser("skills", help="Install and inspect optional external agent plugins")
+    skills_subs = skills.add_subparsers(dest="skills_command", required=True)
+    apply_skills = skills_subs.add_parser("apply", help="Apply an external skills profile")
+    apply_skills.add_argument("profile", choices=("default",))
+    apply_skills.add_argument("--agent", default="codex", choices=("codex",))
+    check_skills = skills_subs.add_parser("doctor", help="Inspect Codex plugin marketplaces and plugins")
+    check_skills.add_argument("--agent", default="codex", choices=("codex",))
     run = subs.add_parser("run", help="Prepare a repository for an agent and optionally launch its client"); run.add_argument("agent"); run.add_argument("path", nargs="?", default="."); run.add_argument("--no-launch", action="store_true")
     mcp = subs.add_parser("mcp"); mcp.add_argument("--repo", default=".")
     mcp.add_argument("--profile", choices=("repository", "bundle"), default="repository")
@@ -123,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--root", type=Path, required=True)
         command_parser.add_argument("--index-root", type=Path, required=True)
         command_parser.add_argument("--depth", type=int, default=1)
-    args = parser.parse_args(argv); root = find_root(getattr(args, "path", getattr(args, "repo", ".")))
+    args = parser.parse_args(arguments); root = find_root(getattr(args, "path", getattr(args, "repo", ".")))
     if args.command == "bundle":
         if args.bundle_command in ("index", "update"):
             emit(index_bundle(args.root, args.index_root, wikilinks=args.wikilinks)); return 0
@@ -139,6 +216,16 @@ def main(argv: list[str] | None = None) -> int:
             emit(graph_query(args.index_root, args.path, args.depth)); return 0
     if args.command == "install":
         emit({"skill": str(install_codex_skill(args.skills_dir)), "next": "Restart Codex to discover the skill, then work normally in any repository."}); return 0
+    if args.command == "skills":
+        try:
+            result = apply_profile(args.profile, args.agent) if args.skills_command == "apply" else skills_doctor(args.agent)
+            emit(result)
+            if args.skills_command == "apply":
+                return 0
+            return 0 if result.get("ok", False) else 1
+        except (OSError, RuntimeError, ValueError) as exc:
+            emit({"error": str(exc)})
+            return 2
     if args.command == "init":
         profiles = tuple(part.strip() for part in args.profiles.split(",") if part.strip()) if args.profiles else None
         try:
