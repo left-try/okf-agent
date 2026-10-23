@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use okf_application::docs::{CheckReport, DocsPort, DocsReport};
@@ -53,6 +53,15 @@ pub fn output_path(root: &Path, output: Option<&Path>) -> Result<PathBuf, Diagno
     } else {
         root.join(candidate)
     };
+    if candidate
+        .components()
+        .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(Diagnostic::new(
+            ErrorKind::InvalidPath,
+            "Documentation output must stay inside the repository",
+        ));
+    }
     let relative = candidate.strip_prefix(&root).map_err(|_| {
         Diagnostic::new(
             ErrorKind::InvalidPath,

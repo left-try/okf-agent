@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use okf_adapter_fs::{
     generated_blocks::{GENERATED_END, GENERATED_START, replace_generated, validate_generated},
@@ -9,15 +13,17 @@ use okf_application::lifecycle::LifecycleFs;
 struct Scratch(PathBuf);
 impl Scratch {
     fn new() -> Self {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
-            "okf-generated-{}-{}",
+            "okf-generated-{}-{}-{}",
             std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos()
         ));
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir(&path).unwrap();
         Self(path)
     }
 }
@@ -64,6 +70,20 @@ fn initialization_preserves_partial_curated_files_and_installs_selected_profiles
     );
     assert!(scratch.0.join(".okf/workflows/profiles/sdd.md").is_file());
     assert!(scratch.0.join(".okf-index").is_dir());
+}
+
+#[test]
+fn initialization_ignores_local_index_and_preserves_existing_gitignore_content() {
+    let scratch = Scratch::new();
+    fs::write(scratch.0.join(".gitignore"), "build/\r\nuser-data/\r\n").unwrap();
+
+    templates::initialize(&scratch.0, &[]).unwrap();
+    templates::initialize(&scratch.0, &[]).unwrap();
+
+    let gitignore = fs::read_to_string(scratch.0.join(".gitignore")).unwrap();
+    assert!(gitignore.starts_with("build/\r\nuser-data/\r\n"));
+    assert!(gitignore.contains(".okf-index/\r\n"));
+    assert_eq!(gitignore.matches(".okf-index/").count(), 1);
 }
 
 #[test]

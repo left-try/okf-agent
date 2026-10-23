@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import re
 import shutil
 import subprocess
 import sys
@@ -37,69 +35,6 @@ def emit(value: object) -> None:
     print(json.dumps(value, indent=2, default=str))
 
 
-_RUST_MIN_VERSION = (0, 1, 1)
-
-
-def _delegated_capability(arguments: list[str]) -> str | None:
-    """Return the completed Rust capability that owns these CLI arguments."""
-    if not arguments:
-        return None
-    command = arguments[0]
-    if command in {"index", "update", "validate", "doctor", "install", "record-decision"}:
-        return command
-    if command in {"workflow", "bundle", "docs"} and len(arguments) > 1:
-        return f"{command} {arguments[1]}"
-    return None
-
-
-def _version_tuple(output: str) -> tuple[int, int, int] | None:
-    match = re.search(r"\bokf-agent-rs\s+(\d+)\.(\d+)\.(\d+)", output)
-    return tuple(map(int, match.groups())) if match else None
-
-
-def _try_rust_delegation(arguments: list[str]) -> int | None:
-    """Delegate an explicitly opted-in, supported command; otherwise use Python."""
-    if os.environ.get("OKF_AGENT_USE_RUST", "").lower() not in {"1", "true", "yes"}:
-        return None
-    required = _delegated_capability(arguments)
-    if required is None:
-        return None
-
-    executable = os.environ.get("OKF_AGENT_RUST_BIN") or shutil.which("okf-agent-rs")
-    if not executable:
-        print("okf-agent: Rust delegation requested, but `okf-agent-rs` was not found; using Python.", file=sys.stderr)
-        return None
-
-    try:
-        version = subprocess.run([executable, "--version"], capture_output=True, text=True, check=False)
-    except OSError as error:
-        print(f"okf-agent: cannot start Rust binary ({error}); using Python.", file=sys.stderr)
-        return None
-    parsed_version = _version_tuple(version.stdout)
-    if version.returncode != 0 or parsed_version is None or parsed_version < _RUST_MIN_VERSION:
-        print("okf-agent: Rust binary is missing a supported version (requires >= 0.1.1); using Python.", file=sys.stderr)
-        return None
-
-    try:
-        capabilities = subprocess.run([executable, "capabilities"], capture_output=True, text=True, check=False)
-    except OSError as error:
-        print(f"okf-agent: cannot inspect Rust binary capabilities ({error}); using Python.", file=sys.stderr)
-        return None
-    try:
-        implemented = json.loads(capabilities.stdout)["implemented"]
-    except (json.JSONDecodeError, KeyError, TypeError):
-        implemented = []
-    if capabilities.returncode != 0 or required not in implemented:
-        print(f"okf-agent: Rust binary does not advertise `{required}` support; using Python.", file=sys.stderr)
-        return None
-
-    try:
-        return subprocess.run([executable, *arguments], check=False).returncode
-    except OSError as error:
-        print(f"okf-agent: cannot start Rust command ({error}); using Python.", file=sys.stderr)
-        return None
-
-
 def command_init(root: Path, profiles: tuple[str, ...] | None = None) -> dict:
     created = initialize(root)
     profile_result = install_profiles(root, profiles) if profiles else None
@@ -131,9 +66,6 @@ def command_init(root: Path, profiles: tuple[str, ...] | None = None) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
-    delegated = _try_rust_delegation(arguments)
-    if delegated is not None:
-        return delegated
     parser = argparse.ArgumentParser(prog="okf-agent")
     subs = parser.add_subparsers(dest="command", required=True)
     for name in ("init", "index", "update", "validate", "doctor"):

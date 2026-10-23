@@ -1,9 +1,11 @@
+#[cfg(not(feature = "mcp"))]
 use serde_json::Value;
 use std::process::Command;
 
 #[test]
+#[cfg(not(feature = "mcp"))]
 fn default_binary_reports_actionable_optional_feature_error() {
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(["mcp", "--profile", "repository"])
         .output()
         .unwrap();
@@ -20,7 +22,7 @@ fn default_binary_reports_actionable_optional_feature_error() {
 
 #[test]
 fn bundle_profile_requires_both_explicit_roots() {
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .args(["mcp", "--profile", "bundle"])
         .output()
         .unwrap();

@@ -1,4 +1,4 @@
-//! Command-line parsing and dispatch for the provisional Rust interface.
+//! Command-line parsing and dispatch for OKF Agent.
 
 use std::ffi::OsString;
 
@@ -10,12 +10,14 @@ mod docs;
 mod index;
 mod lifecycle;
 mod mcp;
+mod process;
 mod run;
+mod skills;
 mod workflow;
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "okf-agent-rs",
+    name = "okf-agent",
     version,
     about = "Rust implementation of OKF Agent"
 )]
@@ -53,7 +55,9 @@ enum Command {
     Run(run::RunArgs),
     /// Run the optional Model Context Protocol server over stdio.
     Mcp(mcp::McpArgs),
-    /// Preserve a useful structured response for commands not ported yet.
+    /// Install or inspect optional external Codex plugin profiles.
+    Skills(skills::SkillsArgs),
+    /// Preserve a useful structured response for unknown commands.
     #[command(external_subcommand)]
     Unsupported(Vec<OsString>),
 }
@@ -62,10 +66,39 @@ impl Cli {
     pub fn run(self) -> i32 {
         match self.command {
             Command::Capabilities => {
-                println!(
-                    "{}",
-                    json!({ "implemented": ["capabilities", "init", "index", "workflow show", "workflow explain", "workflow resolve", "bundle index", "bundle update", "bundle validate", "bundle search", "bundle backlinks", "bundle neighborhood", "bundle export", "update", "validate", "doctor", "install", "record-decision", "docs build", "docs check", "docs serve", "run"] })
-                );
+                let implemented = vec![
+                    "capabilities",
+                    "init",
+                    "index",
+                    "workflow show",
+                    "workflow explain",
+                    "workflow resolve",
+                    "bundle index",
+                    "bundle update",
+                    "bundle validate",
+                    "bundle search",
+                    "bundle backlinks",
+                    "bundle neighborhood",
+                    "bundle export",
+                    "update",
+                    "validate",
+                    "doctor",
+                    "install",
+                    "record-decision",
+                    "docs build",
+                    "docs check",
+                    "docs serve",
+                    "run",
+                    "skills apply",
+                    "skills doctor",
+                ];
+                #[cfg(feature = "mcp")]
+                let implemented = {
+                    let mut commands = implemented;
+                    commands.push("mcp");
+                    commands
+                };
+                println!("{}", json!({"implemented": implemented}));
                 0
             }
             Command::Init(args) => lifecycle::initialize(args),
@@ -80,6 +113,7 @@ impl Cli {
             Command::Docs(args) => docs::run(args),
             Command::Run(args) => run::run(args),
             Command::Mcp(args) => mcp::run(args),
+            Command::Skills(args) => skills::run(args),
             Command::Unsupported(arguments) => {
                 let command = arguments
                     .first()

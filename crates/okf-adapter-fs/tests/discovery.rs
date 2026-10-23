@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use okf_adapter_fs::discovery::FsSourceCatalog;
 use okf_application::repository_index::SourceCatalog;
@@ -6,15 +10,17 @@ use okf_application::repository_index::SourceCatalog;
 struct Scratch(PathBuf);
 impl Scratch {
     fn new() -> Self {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
-            "okf-discovery-{}-{}",
+            "okf-discovery-{}-{}-{}",
             std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos()
         ));
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir(&path).unwrap();
         Self(path)
     }
 }

@@ -1,10 +1,20 @@
-use std::{fs, process::Command};
+use std::{
+    fs,
+    process::Command,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
+fn unique_id() -> usize {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    NEXT.fetch_add(1, Ordering::Relaxed)
+}
 
 #[test]
 fn index_command_builds_a_local_sqlite_index_and_reports_counts() {
     let root = std::env::temp_dir().join(format!(
-        "okf-index-cli-{}-{}",
+        "okf-index-cli-{}-{}-{}",
         std::process::id(),
+        unique_id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -12,7 +22,7 @@ fn index_command_builds_a_local_sqlite_index_and_reports_counts() {
     ));
     fs::create_dir_all(&root).unwrap();
     fs::write(root.join("lib.rs"), "pub struct IndexedThing;").unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .arg("index")
         .arg(&root)
         .output()
@@ -33,8 +43,9 @@ fn index_command_builds_a_local_sqlite_index_and_reports_counts() {
 #[test]
 fn index_from_a_nested_directory_uses_the_git_repository_root() {
     let root = std::env::temp_dir().join(format!(
-        "okf-index-nested-{}-{}",
+        "okf-index-nested-{}-{}-{}",
         std::process::id(),
+        unique_id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -50,7 +61,7 @@ fn index_from_a_nested_directory_uses_the_git_repository_root() {
         .unwrap();
     assert!(init.success());
 
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .arg("index")
         .arg(&nested)
         .output()
@@ -70,8 +81,9 @@ fn index_from_a_nested_directory_uses_the_git_repository_root() {
 #[test]
 fn index_refuses_to_follow_an_escaping_index_directory_symlink() {
     let root = std::env::temp_dir().join(format!(
-        "okf-index-symlink-{}-{}",
+        "okf-index-symlink-{}-{}-{}",
         std::process::id(),
+        unique_id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -94,7 +106,7 @@ fn index_refuses_to_follow_an_escaping_index_directory_symlink() {
         return;
     }
 
-    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
         .arg("index")
         .arg(&root)
         .output()
@@ -103,6 +115,9 @@ fn index_refuses_to_follow_an_escaping_index_directory_symlink() {
     assert_eq!(output.status.code(), Some(2));
     assert!(!outside.join("knowledge.sqlite3").exists());
     assert!(!root.join(".okf/manifest.yaml").exists());
+    #[cfg(windows)]
+    fs::remove_dir(link).unwrap();
+    #[cfg(unix)]
     fs::remove_file(link).unwrap();
     fs::remove_dir_all(root).unwrap();
     fs::remove_dir_all(outside).unwrap();

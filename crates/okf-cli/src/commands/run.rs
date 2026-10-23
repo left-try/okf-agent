@@ -1,6 +1,6 @@
 use clap::Args;
 use serde::Serialize;
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct RunArgs {
@@ -37,7 +37,7 @@ pub fn run(args: RunArgs) -> i32 {
         return emit(&payload, 0);
     }
     let executable = client_name(&args.agent);
-    if !on_path(executable) {
+    if !super::process::contains(executable) {
         payload["error"] = serde_json::Value::String(format!(
             "Client `{executable}` is not on PATH. Use --no-launch to prepare the repository."
         ));
@@ -49,7 +49,7 @@ pub fn run(args: RunArgs) -> i32 {
     );
     #[cfg(feature = "watcher")]
     let _watcher = watcher::start(root.clone());
-    let status = Command::new(executable).current_dir(&root).status();
+    let status = super::process::status(executable);
     match status {
         Ok(s) => s.code().unwrap_or(1),
         Err(e) => {
@@ -57,16 +57,6 @@ pub fn run(args: RunArgs) -> i32 {
             2
         }
     }
-}
-fn on_path(name: &str) -> bool {
-    std::env::var_os("PATH")
-        .into_iter()
-        .flat_map(|p| std::env::split_paths(&p).collect::<Vec<_>>())
-        .any(|d| {
-            ["", ".exe", ".cmd", ".bat"]
-                .iter()
-                .any(|e| d.join(format!("{name}{e}")).is_file())
-        })
 }
 fn emit(value: &impl Serialize, code: i32) -> i32 {
     println!(
