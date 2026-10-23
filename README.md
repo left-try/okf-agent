@@ -73,6 +73,10 @@ It creates `.okf/`, builds the local index and local wiki, installs Git hooks wh
 
 Existing instruction files are preserved and receive one OKF protocol block. Existing non-OKF Git hooks are left untouched.
 
+Initialization adds `.okf-index/` to the repository's `.gitignore` so the rebuildable local index stays out of version control. Existing `.gitignore` content is preserved.
+
+The current CLI includes the `docs` and `bundle` command groups and the `init --profiles` option documented below. After a new release is published, upgrade an existing installation to receive these commands; for a Git-based pipx install, reinstall from the repository URL.
+
 The wiki is generated into `.okf-index/site/`, which is local and rebuildable. It has a page list, project facts, copies of `.okf/` Markdown pages, and simple text search. Start the read-only local web UI with:
 
 ```powershell
