@@ -34,6 +34,8 @@ The Rust index uses `.okf-index/knowledge.sqlite3` as its disposable local index
 
 Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. Install the optional MCP server with `cargo install --git https://github.com/left-try/okf-agent.git --locked --features mcp --bin okf-agent`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`.
 
+The repository MCP server checks GitHub's latest release in the background on startup and every 24 hours while it runs. When a newer stable version is found, subsequent `okf.get_change_context` responses include an `update_notice` for the coding agent. The check uses `curl` if available, sends no repository contents, and does not install updates; offline or failed checks are silent. Set `OKF_DISABLE_UPDATE_CHECK` to disable it. Other CLI and bundle-profile commands do not perform this check.
+
 ## One-Time User Setup
 
 After installing the CLI, users run this once inside each repository:

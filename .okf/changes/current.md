@@ -1,13 +1,9 @@
 # Current
 
 <!-- okf:generated:start -->
-# Current change context
-
-Updated: 2026-10-23T10:47:45.797191+00:00
-
 Changed files:
-- `crates/okf-adapter-fs/tests/discovery.rs`
-- `crates/okf-adapter-fs/tests/generated_files.rs`
-- `crates/okf-adapter-fs/tests/yaml_values.rs`
-- `crates/okf-domain/tests/repository_paths.rs`
+- `README.md`
+- `crates/okf-adapter-mcp/src/lib.rs`
+- `crates/okf-adapter-mcp/src/repository.rs`
+- `crates/okf-adapter-mcp/src/update_check.rs`
 <!-- okf:generated:end -->
