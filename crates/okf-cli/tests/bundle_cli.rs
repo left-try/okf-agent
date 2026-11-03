@@ -141,3 +141,25 @@ fn bundle_validation_returns_one_for_conformance_errors() {
     let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert!(!result["ok"].as_bool().unwrap());
 }
+
+#[test]
+fn repository_index_is_not_mistaken_for_a_bundle_index() {
+    let scratch = Scratch::new();
+    fs::write(scratch.0.join("source.rs"), "struct Needle;").unwrap();
+    let root = scratch.0.to_str().unwrap();
+    assert!(run(&["index", root]).status.success());
+    let index = scratch.0.join(".okf-index");
+    let output = run(&[
+        "bundle",
+        "search",
+        "needle",
+        "--root",
+        root,
+        "--index-root",
+        index.to_str().unwrap(),
+    ]);
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(!output.status.success());
+    assert!(text.contains("run bundle index first"), "{text}");
+    assert!(!text.contains("no such column"), "{text}");
+}

@@ -76,6 +76,8 @@ The generated site is not published or pushed to GitHub. `.okf/` remains the sou
 
 The `bundle` profile indexes an arbitrary Markdown corpus without requiring Git. It keeps source files read-only and stores its SQLite/FTS index only in the explicitly supplied index directory. It does not create `.okf/`, repository instructions, workflow policy, or hooks.
 
+Run `bundle index` before searching: the repository index built by `okf-agent index` contains source code and is separate from the Markdown bundle index. New bundle indexes use `bundle.sqlite3` in the chosen index directory, so the two profiles can share a directory. Existing bundle indexes remain usable.
+
 ~~~powershell
 okf-agent bundle index --root .\training --index-root .\training-index
 okf-agent bundle search "lesson objectives" --root .\training --index-root .\training-index
