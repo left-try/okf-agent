@@ -1,6 +1,64 @@
 use serde_json::{Value, json};
 use std::sync::{Arc, RwLock};
 
+fn fetch() -> Option<String> {
+    let output = std::process::Command::new("curl")
+        .args([
+            "--fail",
+            "--silent",
+            "--max-time",
+            "3",
+            "--user-agent",
+            "okf-agent-update-check",
+            "https://api.github.com/repos/left-try/okf-agent/releases/latest",
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout).ok()
+}
+
+/// Check at most daily for CLI users. Failure never changes command status.
+pub fn cli_notice() -> Option<Value> {
+    if std::env::var_os("OKF_DISABLE_UPDATE_CHECK").is_some() {
+        return None;
+    }
+    let base = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(std::path::PathBuf::from))
+        .or_else(|| {
+            std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".cache"))
+        })?;
+    let dir = base.join("okf-agent");
+    std::fs::create_dir_all(&dir).ok()?;
+    let path = dir.join("release-check.json");
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_secs();
+    let cached: Value = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or(Value::Null);
+    if now.saturating_sub(cached["checked_at"].as_u64().unwrap_or(0)) < 86_400 {
+        return cached
+            .get("response")
+            .and_then(Value::as_str)
+            .and_then(|body| notice(env!("CARGO_PKG_VERSION"), body));
+    }
+    let response = fetch();
+    let found = response
+        .as_deref()
+        .and_then(|body| notice(env!("CARGO_PKG_VERSION"), body));
+    let _ = std::fs::write(
+        path,
+        json!({"checked_at": now, "response": response}).to_string(),
+    );
+    found
+}
+
 pub type UpdateNotice = Arc<RwLock<Option<Value>>>;
 
 /// Poll in the background so an unavailable network never delays MCP calls.
@@ -10,21 +68,7 @@ pub fn start(state: UpdateNotice) {
     }
     std::thread::spawn(move || {
         loop {
-            let result = std::process::Command::new("curl")
-                .args([
-                    "--fail",
-                    "--silent",
-                    "--show-error",
-                    "--max-time",
-                    "3",
-                    "--user-agent",
-                    "okf-agent-update-check",
-                    "https://api.github.com/repos/left-try/okf-agent/releases/latest",
-                ])
-                .output();
-            if let Ok(output) = result
-                && output.status.success()
-                && let Ok(text) = String::from_utf8(output.stdout)
+            if let Some(text) = fetch()
                 && let Ok(mut guard) = state.write()
             {
                 *guard = notice(env!("CARGO_PKG_VERSION"), &text);
