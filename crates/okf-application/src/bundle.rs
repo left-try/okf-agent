@@ -540,7 +540,8 @@ pub fn validation_result(report: &BundleIndexReport) -> Value {
 }
 
 pub fn require_index(index_root: &Path) -> Result<(), Diagnostic> {
-    if index_root.join("knowledge.sqlite3").is_file() {
+    if index_root.join("bundle.sqlite3").is_file() || index_root.join("knowledge.sqlite3").is_file()
+    {
         Ok(())
     } else {
         Err(Diagnostic::new(

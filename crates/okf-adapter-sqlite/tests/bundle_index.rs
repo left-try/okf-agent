@@ -114,3 +114,35 @@ fn backlinks_traverse_only_resolved_incoming_edges() {
     assert_eq!(graph["nodes"].as_array().unwrap().len(), 2);
     assert_eq!(graph["edges"][0]["source"], "index.md");
 }
+
+#[test]
+fn bundle_and_repository_indexes_can_share_an_index_directory() {
+    use okf_adapter_sqlite::repository::SqliteIndexStore;
+    use okf_application::repository_index::{IndexStore, SourceDocument};
+    let scratch = Scratch::new();
+    let repository = SqliteIndexStore;
+    repository
+        .rebuild(
+            &scratch.0,
+            &[SourceDocument {
+                path: "src/main.rs".into(),
+                content: "struct Needle;".into(),
+            }],
+        )
+        .unwrap();
+    let bundle = SqliteBundleStore;
+    let index = scratch.0.join(".okf-index");
+    bundle
+        .rebuild(&index, "/bundle", &prepared("curriculum material"))
+        .unwrap();
+    assert_eq!(
+        bundle.search(&index, "curriculum", 5).unwrap()[0].path,
+        "lesson.md"
+    );
+    assert!(
+        !repository
+            .search(&scratch.0, "Needle", 5)
+            .unwrap()
+            .is_empty()
+    );
+}
