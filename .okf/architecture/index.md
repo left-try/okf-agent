@@ -2,7 +2,7 @@
 
 <!-- okf:generated:start -->
 ## Generated facts
-- Manifests: Cargo.toml, pyproject.toml
+- Manifests: Cargo.toml
 <!-- okf:generated:end -->
 
 ## Curated constraints

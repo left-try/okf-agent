@@ -2,7 +2,7 @@
 
 <!-- okf:generated:start -->
 ## Generated facts
-- Languages: Python, Rust
+- Languages: Rust
 - Framework hints: none
 <!-- okf:generated:end -->
 

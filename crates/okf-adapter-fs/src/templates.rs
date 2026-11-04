@@ -91,7 +91,7 @@ pub fn install_profiles(
     } else {
         let mut value = current.unwrap_or_else(|| {
             serde_json::from_str(include_str!(
-                "../../../okf_agent/templates/workflows/config.json"
+                "../templates/workflows/config.json"
             ))
             .expect("packaged workflow config is valid")
         });
@@ -153,20 +153,14 @@ pub fn install_profiles(
 
 fn workflow_template(relative: &str) -> Option<&'static str> {
     Some(match relative {
-        "active.md" => include_str!("../../../okf_agent/templates/workflows/active.md"),
-        "classification.md" => {
-            include_str!("../../../okf_agent/templates/workflows/classification.md")
-        }
-        "profiles/sdd.md" => include_str!("../../../okf_agent/templates/workflows/profiles/sdd.md"),
-        "profiles/tdd.md" => include_str!("../../../okf_agent/templates/workflows/profiles/tdd.md"),
-        "profiles/gtdd.md" => {
-            include_str!("../../../okf_agent/templates/workflows/profiles/gtdd.md")
-        }
-        "roles/coder.md" => include_str!("../../../okf_agent/templates/workflows/roles/coder.md"),
-        "roles/tester.md" => include_str!("../../../okf_agent/templates/workflows/roles/tester.md"),
-        "roles/auditor.md" => {
-            include_str!("../../../okf_agent/templates/workflows/roles/auditor.md")
-        }
+        "active.md" => include_str!("../templates/workflows/active.md"),
+        "classification.md" => include_str!("../templates/workflows/classification.md"),
+        "profiles/sdd.md" => include_str!("../templates/workflows/profiles/sdd.md"),
+        "profiles/tdd.md" => include_str!("../templates/workflows/profiles/tdd.md"),
+        "profiles/gtdd.md" => include_str!("../templates/workflows/profiles/gtdd.md"),
+        "roles/coder.md" => include_str!("../templates/workflows/roles/coder.md"),
+        "roles/tester.md" => include_str!("../templates/workflows/roles/tester.md"),
+        "roles/auditor.md" => include_str!("../templates/workflows/roles/auditor.md"),
         _ => return None,
     })
 }

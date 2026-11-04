@@ -12,8 +12,6 @@ cargo install --git https://github.com/left-try/okf-agent.git --locked --bin okf
 
 Check the GitHub Releases page for prebuilt binaries. When a matching binary is not available, install directly from the repository with Cargo as shown above.
 
-The Python package remains available for existing `okf_agent` imports, but it no longer installs an `okf-agent` command. The Rust CLI is the only supported command-line implementation.
-
 ## Commands
 
 From a checkout, build and run the Rust CLI with:
