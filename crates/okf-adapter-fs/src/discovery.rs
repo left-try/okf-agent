@@ -1,8 +1,8 @@
 use std::path::Path;
 
+use ignore::{DirEntry, WalkBuilder};
 use okf_application::repository_index::{DetectedFacts, SourceCatalog, SourceDocument};
 use okf_domain::diagnostics::{Diagnostic, ErrorKind};
-use walkdir::{DirEntry, WalkDir};
 
 const SKIP: &[&str] = &[
     ".git",
@@ -36,13 +36,9 @@ pub struct FsSourceCatalog;
 impl SourceCatalog for FsSourceCatalog {
     fn detect(&self, root: &Path) -> Result<DetectedFacts, Diagnostic> {
         let mut names = Vec::new();
-        for entry in WalkDir::new(root)
-            .follow_links(false)
-            .into_iter()
-            .filter_entry(allowed)
-        {
+        for entry in walker(root) {
             let entry = entry.map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
-            if entry.file_type().is_file() {
+            if entry.file_type().is_some_and(|kind| kind.is_file()) {
                 names.push(entry.file_name().to_string_lossy().to_string());
             }
         }
@@ -75,13 +71,9 @@ impl SourceCatalog for FsSourceCatalog {
 
     fn discover(&self, root: &Path) -> Result<Vec<SourceDocument>, Diagnostic> {
         let mut files = Vec::new();
-        for entry in WalkDir::new(root)
-            .follow_links(false)
-            .into_iter()
-            .filter_entry(allowed)
-        {
+        for entry in walker(root) {
             let entry = entry.map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
-            if !entry.file_type().is_file() || !is_indexed(entry.path()) {
+            if !entry.file_type().is_some_and(|kind| kind.is_file()) || !is_indexed(entry.path()) {
                 continue;
             }
             let relative = entry
@@ -108,8 +100,17 @@ impl SourceCatalog for FsSourceCatalog {
 
 fn allowed(entry: &DirEntry) -> bool {
     entry.depth() == 0
-        || (!entry.file_type().is_dir()
+        || (!entry.file_type().is_some_and(|kind| kind.is_dir())
             || !SKIP.contains(&entry.file_name().to_string_lossy().as_ref()))
+}
+
+fn walker(root: &Path) -> ignore::Walk {
+    WalkBuilder::new(root)
+        .hidden(false)
+        .ignore(false)
+        .follow_links(false)
+        .filter_entry(allowed)
+        .build()
 }
 
 fn is_indexed(path: &Path) -> bool {
