@@ -13,3 +13,4 @@ serde-saphyr.workspace = true
 walkdir.workspace = true
 regex.workspace = true
 sha2.workspace = true
+ignore = "0.4.34"

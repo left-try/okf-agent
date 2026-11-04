@@ -71,6 +71,30 @@ fn empty_repository_has_no_indexable_sources() {
 }
 
 #[test]
+fn excludes_gitignored_files_and_caches_from_documents_and_facts() {
+    let scratch = Scratch::new();
+    fs::create_dir_all(scratch.0.join(".git")).unwrap();
+    fs::write(scratch.0.join(".gitignore"), "cache/\n*.generated.rs\n").unwrap();
+    fs::create_dir_all(scratch.0.join("cache")).unwrap();
+    fs::write(scratch.0.join("cache/package.json"), "{}").unwrap();
+    fs::write(scratch.0.join("cache/tool.go"), "package cache").unwrap();
+    fs::write(scratch.0.join("code.generated.rs"), "struct Generated;").unwrap();
+    fs::write(scratch.0.join("keep.rs"), "struct Kept;").unwrap();
+    let docs = FsSourceCatalog.discover(&scratch.0).unwrap();
+    assert_eq!(
+        docs.iter().map(|d| d.path.as_str()).collect::<Vec<_>>(),
+        ["keep.rs"]
+    );
+    assert!(
+        FsSourceCatalog
+            .detect(&scratch.0)
+            .unwrap()
+            .languages
+            .is_empty()
+    );
+}
+
+#[test]
 fn truncates_at_500_000_unicode_characters_without_splitting_utf8() {
     let scratch = Scratch::new();
     let expected = format!("{}{}", "é".repeat(499_999), "🦀");
