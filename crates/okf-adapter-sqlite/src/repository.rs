@@ -79,6 +79,19 @@ impl IndexStore for SqliteIndexStore {
             }
         }
         tx.commit().map_err(|error| db_error(&path, error))?;
+        let free: i64 = db
+            .pragma_query_value(None, "freelist_count", |row| row.get(0))
+            .map_err(|error| db_error(&path, error))?;
+        let pages: i64 = db
+            .pragma_query_value(None, "page_count", |row| row.get(0))
+            .map_err(|error| db_error(&path, error))?;
+        let page_size: i64 = db
+            .pragma_query_value(None, "page_size", |row| row.get(0))
+            .map_err(|error| db_error(&path, error))?;
+        if free.saturating_mul(page_size) >= 1_048_576 && free.saturating_mul(4) >= pages {
+            db.execute_batch("VACUUM")
+                .map_err(|error| db_error(&path, error))?;
+        }
         Ok(IndexReport {
             files: documents.len(),
             symbols: symbol_count,
