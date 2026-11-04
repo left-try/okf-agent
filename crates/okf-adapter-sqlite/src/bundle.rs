@@ -13,6 +13,28 @@ use serde_json::{Value, json};
 #[derive(Default)]
 pub struct SqliteBundleStore;
 
+// Older bundle indexes used the same filename as repository indexes. Reuse
+// only a database with the bundle schema; a repository index must stay separate.
+fn bundle_path(index_root: &Path) -> std::path::PathBuf {
+    let dedicated = index_root.join("bundle.sqlite3");
+    if dedicated.is_file() {
+        return dedicated;
+    }
+    let legacy = index_root.join("knowledge.sqlite3");
+    if legacy.is_file()
+        && Connection::open_with_flags(&legacy, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .and_then(|db| {
+                db.prepare("SELECT content_hash FROM documents LIMIT 0")
+                    .map(|_| ())
+            })
+            .is_ok()
+    {
+        legacy
+    } else {
+        dedicated
+    }
+}
+
 impl BundleStore for SqliteBundleStore {
     fn rebuild(
         &self,
@@ -21,7 +43,7 @@ impl BundleStore for SqliteBundleStore {
         prepared: &PreparedBundle,
     ) -> Result<BundleIndexReport, Diagnostic> {
         std::fs::create_dir_all(index_root).map_err(|error| io_error(index_root, error))?;
-        let path = index_root.join("knowledge.sqlite3");
+        let path = bundle_path(index_root);
         let mut db = Connection::open(&path).map_err(|error| db_error(&path, error))?;
         let tx = db.transaction().map_err(|error| db_error(&path, error))?;
         tx.execute_batch("CREATE TABLE IF NOT EXISTS documents (path TEXT PRIMARY KEY, title TEXT, doc_type TEXT, aliases TEXT NOT NULL, frontmatter TEXT NOT NULL, body TEXT NOT NULL, content_hash TEXT NOT NULL, revision INTEGER NOT NULL);
@@ -91,7 +113,7 @@ CREATE TABLE IF NOT EXISTS validation (payload TEXT NOT NULL);").map_err(|error|
         query: &str,
         limit: usize,
     ) -> Result<Vec<BundleSearchHit>, Diagnostic> {
-        let path = index_root.join("knowledge.sqlite3");
+        let path = bundle_path(index_root);
         let db = open_existing(&path)?;
         let mut statement = db.prepare("SELECT path,snippet(document_search,4,'[',']','…',18),title,doc_type FROM document_search WHERE document_search MATCH ? LIMIT ?").map_err(|error| db_error(&path,error))?;
         statement
@@ -118,7 +140,7 @@ CREATE TABLE IF NOT EXISTS validation (payload TEXT NOT NULL);").map_err(|error|
         depth: usize,
         backlinks: bool,
     ) -> Result<Value, Diagnostic> {
-        let path = index_root.join("knowledge.sqlite3");
+        let path = bundle_path(index_root);
         let db = open_existing(&path)?;
         let requested_path = requested_path
             .replace('\\', "/")
@@ -181,7 +203,7 @@ CREATE TABLE IF NOT EXISTS validation (payload TEXT NOT NULL);").map_err(|error|
     }
 
     fn export(&self, index_root: &Path) -> Result<Value, Diagnostic> {
-        let path = index_root.join("knowledge.sqlite3");
+        let path = bundle_path(index_root);
         let db = open_existing(&path)?;
         let mut nodes = Vec::new();
         {
