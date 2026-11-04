@@ -2,8 +2,6 @@
 
 <!-- okf:generated:start -->
 Changed files:
-- `crates/okf-adapter-fs/src/discovery.rs`
-- `crates/okf-adapter-fs/tests/discovery.rs`
-- `crates/okf-adapter-fs/Cargo.toml`
-- `Cargo.lock`
+- `crates/okf-adapter-sqlite/src/repository.rs`
+- `crates/okf-adapter-sqlite/tests/repository_index.rs`
 <!-- okf:generated:end -->

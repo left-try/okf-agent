@@ -72,6 +72,33 @@ fn rebuild_preserves_schema_and_searches_documents_symbols_and_import_edges() {
 }
 
 #[test]
+fn rebuilding_a_smaller_index_reclaims_unused_database_pages() {
+    let scratch = Scratch::new();
+    let store = SqliteIndexStore;
+    let docs: Vec<_> = (0..24)
+        .map(|i| SourceDocument {
+            path: format!("cache/{i}.rs"),
+            content: format!("struct Cache{i};\n{}", "indexable content ".repeat(25_000)),
+        })
+        .collect();
+    store.rebuild(&scratch.0, &docs).unwrap();
+    let path = scratch.0.join(".okf-index/knowledge.sqlite3");
+    let before = fs::metadata(&path).unwrap().len();
+    store
+        .rebuild(
+            &scratch.0,
+            &[SourceDocument {
+                path: "src/main.rs".into(),
+                content: "struct Kept;".into(),
+            }],
+        )
+        .unwrap();
+    let after = fs::metadata(&path).unwrap().len();
+    assert!(after < before / 4, "before: {before}, after: {after}");
+    assert!(!store.search(&scratch.0, "Kept", 5).unwrap().is_empty());
+}
+
+#[test]
 fn failed_rebuild_rolls_back_and_keeps_the_previous_index() {
     let scratch = Scratch::new();
     let store = SqliteIndexStore;
