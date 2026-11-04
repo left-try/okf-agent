@@ -4,3 +4,4 @@
 pub mod bundle;
 #[cfg(feature = "mcp")]
 pub mod repository;
+pub mod update_check;

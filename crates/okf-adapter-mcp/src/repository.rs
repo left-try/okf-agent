@@ -41,12 +41,14 @@ pub fn read_concept(root: &Path, path: &str) -> Result<String, Diagnostic> {
 pub struct RepositoryServer {
     root: PathBuf,
     tool_router: ToolRouter<Self>,
+    update_notice: crate::update_check::UpdateNotice,
 }
 impl RepositoryServer {
     pub fn new(root: PathBuf) -> Self {
         Self {
             root,
             tool_router: Self::tool_router(),
+            update_notice: Default::default(),
         }
     }
     pub fn tool_names(&self) -> Vec<String> {
@@ -192,6 +194,11 @@ impl RepositoryServer {
         .map_err(failure)?;
         let concepts = concept_paths(&self.root, &args.request);
         let mut value = json!({"request":args.request,"matches":matches,"concepts":concepts,"protocol":"Retrieve context before edits; update knowledge after edits; validate before completion."});
+        if let Ok(notice) = self.update_notice.read()
+            && let Some(notice) = notice.as_ref()
+        {
+            value["update_notice"] = notice.clone();
+        }
         if self.root.join(".okf/workflows/config.json").is_file()
             && self.root.join(".okf/workflows/active.md").is_file()
         {
@@ -323,7 +330,9 @@ fn concept_paths(root: &Path, request: &str) -> Vec<String> {
 }
 
 pub async fn serve(root: PathBuf) -> Result<(), String> {
-    let server = RepositoryServer::new(root)
+    let server = RepositoryServer::new(root);
+    crate::update_check::start(server.update_notice.clone());
+    let server = server
         .serve(rmcp::transport::stdio())
         .await
         .map_err(|e| e.to_string())?;

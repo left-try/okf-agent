@@ -64,6 +64,18 @@ enum Command {
 
 impl Cli {
     pub fn run(self) -> i32 {
+        if matches!(
+            &self.command,
+            Command::Index(_) | Command::Update(_) | Command::Validate(_) | Command::Doctor(_)
+        ) && let Some(notice) = okf_adapter_mcp::update_check::cli_notice()
+        {
+            eprintln!(
+                "okf-agent update available: {} (installed {}); {}",
+                notice["latest"].as_str().unwrap_or("unknown"),
+                env!("CARGO_PKG_VERSION"),
+                notice["release_url"].as_str().unwrap_or("")
+            );
+        }
         match self.command {
             Command::Capabilities => {
                 let implemented = vec![

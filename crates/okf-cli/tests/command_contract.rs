@@ -77,3 +77,29 @@ fn unported_command_returns_structured_json_and_exit_code_two() {
     );
     assert!(output.stderr.is_empty());
 }
+
+#[test]
+fn cached_update_notice_goes_to_stderr_without_corrupting_json() {
+    let root = std::env::temp_dir().join(format!("okf-update-notice-{}", std::process::id()));
+    std::fs::create_dir_all(root.join("okf-agent")).unwrap();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    std::fs::write(
+        root.join("okf-agent/release-check.json"),
+        serde_json::json!({"checked_at":now,"response":"{\"tag_name\":\"v999.0.0\"}"}).to_string(),
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_okf-agent"))
+        .args(["index", root.to_str().unwrap()])
+        .env("LOCALAPPDATA", &root)
+        .env("XDG_CACHE_HOME", &root)
+        .env_remove("OKF_DISABLE_UPDATE_CHECK")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(serde_json::from_slice::<serde_json::Value>(&output.stdout).is_ok());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("999.0.0"));
+    let _ = std::fs::remove_dir_all(root);
+}
