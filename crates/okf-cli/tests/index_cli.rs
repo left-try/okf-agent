@@ -36,7 +36,8 @@ fn index_command_builds_a_local_sqlite_index_and_reports_counts() {
     assert_eq!(report["files"], 1);
     assert_eq!(report["symbols"], 1);
     assert!(root.join(".okf-index/knowledge.sqlite3").is_file());
-    assert!(root.join(".okf/manifest.yaml").is_file());
+    assert!(!root.join(".okf").exists());
+    assert!(!root.join(".gitignore").exists());
     fs::remove_dir_all(root).unwrap();
 }
 
@@ -73,7 +74,8 @@ fn index_from_a_nested_directory_uses_the_git_repository_root() {
         String::from_utf8_lossy(&output.stdout)
     );
     assert!(root.join(".okf-index/knowledge.sqlite3").is_file());
-    assert!(root.join(".okf/manifest.yaml").is_file());
+    assert!(!root.join(".okf").exists());
+    assert!(!root.join(".gitignore").exists());
     assert!(!nested.join(".okf-index").exists());
     fs::remove_dir_all(root).unwrap();
 }

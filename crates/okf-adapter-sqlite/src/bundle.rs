@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS validation (payload TEXT NOT NULL);").map_err(|error|
     ) -> Result<Vec<BundleSearchHit>, Diagnostic> {
         let path = bundle_path(index_root);
         let db = open_existing(&path)?;
-        let mut statement = db.prepare("SELECT path,snippet(document_search,4,'[',']','…',18),title,doc_type FROM document_search WHERE document_search MATCH ? LIMIT ?").map_err(|error| db_error(&path,error))?;
+        let mut statement = db.prepare("SELECT path,snippet(document_search,4,'[',']','…',18),title,doc_type FROM document_search WHERE document_search MATCH ? ORDER BY bm25(document_search, 0.0, 5.0, 1.0, 2.0, 1.0), path LIMIT ?").map_err(|error| db_error(&path,error))?;
         statement
             .query_map(
                 params![query, limit.max(1).min(i64::MAX as usize) as i64],

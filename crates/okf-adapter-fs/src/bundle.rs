@@ -11,6 +11,16 @@ use crate::markdown_links::markdown_targets;
 pub struct FsBundleSource;
 
 impl BundleSource for FsBundleSource {
+    fn path_exists(&self, root: &Path, path: &str) -> bool {
+        let Ok(base) = root.canonicalize() else {
+            return false;
+        };
+        let Ok(target) = root.join(path).canonicalize() else {
+            return false;
+        };
+        target.starts_with(base) && (target.is_file() || target.is_dir())
+    }
+
     fn read_all(&self, root: &Path, wikilinks: bool) -> Result<Vec<RawPage>, Diagnostic> {
         if !root.is_dir() {
             return Err(Diagnostic::new(

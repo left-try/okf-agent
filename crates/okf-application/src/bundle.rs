@@ -80,6 +80,9 @@ pub struct BundleSearchHit {
 
 pub trait BundleSource {
     fn read_all(&self, root: &Path, wikilinks: bool) -> Result<Vec<RawPage>, Diagnostic>;
+    fn path_exists(&self, _root: &Path, _path: &str) -> bool {
+        false
+    }
 }
 pub trait BundleStore {
     fn rebuild(
@@ -112,7 +115,7 @@ pub fn index(
     store: &impl BundleStore,
 ) -> Result<BundleIndexReport, Diagnostic> {
     let pages = source.read_all(root, wikilinks)?;
-    let prepared = prepare(pages);
+    let prepared = prepare_with_exists(pages, &|path| source.path_exists(root, path));
     store.rebuild(index_root, &root.to_string_lossy(), &prepared)
 }
 
@@ -138,6 +141,10 @@ pub fn export(index_root: &Path, store: &impl BundleStore) -> Result<Value, Diag
 }
 
 pub fn prepare(raw_pages: Vec<RawPage>) -> PreparedBundle {
+    prepare_with_exists(raw_pages, &|_| false)
+}
+
+fn prepare_with_exists(raw_pages: Vec<RawPage>, exists: &impl Fn(&str) -> bool) -> PreparedBundle {
     let known = raw_pages
         .iter()
         .map(|page| page.path.clone())
@@ -309,7 +316,8 @@ pub fn prepare(raw_pages: Vec<RawPage>) -> PreparedBundle {
                 .and_then(Value::as_str)
                 .filter(|value| !value.trim().is_empty())
             {
-                let (target, status, _) = resolve_target(&page.path, locator, &known, &basenames);
+                let (target, status, _) =
+                    resolve_target(&page.path, locator, &known, &basenames, exists);
                 links.push(BundleLink {
                     source: target.clone().unwrap_or_else(|| locator.to_owned()),
                     target: Some(page.path.clone()),
@@ -325,7 +333,8 @@ pub fn prepare(raw_pages: Vec<RawPage>) -> PreparedBundle {
             }
         }
         for locator in page.targets {
-            let (target, status, error) = resolve_target(&page.path, &locator, &known, &basenames);
+            let (target, status, error) =
+                resolve_target(&page.path, &locator, &known, &basenames, exists);
             let relation = relation_for(&metadata, &locator, target.as_deref());
             if let Some(message) = &error {
                 diagnostic(&mut diagnostics, &page.path, "diagnostic", message);
@@ -376,6 +385,7 @@ fn resolve_target(
     raw: &str,
     known: &std::collections::BTreeSet<String>,
     basenames: &BTreeMap<String, Vec<String>>,
+    exists: &impl Fn(&str) -> bool,
 ) -> (Option<String>, String, Option<String>) {
     let (without_fragment, _) = raw.split_once('#').unwrap_or((raw, ""));
     let path_part = without_fragment
@@ -434,6 +444,9 @@ fn resolve_target(
         .find(|candidate| known.contains(candidate.as_str()))
     {
         return (Some(candidate.clone()), "resolved".to_owned(), None);
+    }
+    if exists(&normalized) {
+        return (None, "asset".to_owned(), None);
     }
     let basename = normalized
         .rsplit('/')
