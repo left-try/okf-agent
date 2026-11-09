@@ -97,16 +97,15 @@ fn page(output: &Path, route: &str, allowed: &BTreeSet<String>) -> (u16, String)
         let mut body = format!("<h1>Search results for {}</h1><ul>", escape(&query));
         if !query.trim().is_empty() {
             for name in allowed {
-                if let Some((_, path)) = resolve_route(output, &format!("/{name}"), allowed) {
-                    if fs::read_to_string(path)
+                if let Some((_, path)) = resolve_route(output, &format!("/{name}"), allowed)
+                    && fs::read_to_string(path)
                         .is_ok_and(|text| text.to_lowercase().contains(&query.to_lowercase()))
-                    {
-                        body.push_str(&format!(
-                            "<li><a href=\"/{}\">{}</a></li>",
-                            escape(name),
-                            escape(name)
-                        ));
-                    }
+                {
+                    body.push_str(&format!(
+                        "<li><a href=\"/{}\">{}</a></li>",
+                        escape(name),
+                        escape(name)
+                    ));
                 }
             }
         }
