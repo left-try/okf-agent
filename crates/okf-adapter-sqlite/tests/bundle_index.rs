@@ -146,3 +146,19 @@ fn bundle_and_repository_indexes_can_share_an_index_directory() {
             .is_empty()
     );
 }
+
+#[test]
+fn search_ranks_title_matches_before_applying_limit() {
+    let scratch = Scratch::new();
+    let store = SqliteBundleStore;
+    let mut bundle = prepared("backup restore");
+    bundle.pages[0].title = "Old plan".into();
+    bundle.pages[0].body = "backup restore".into();
+    bundle.pages[1].title = "Backup and restore guide".into();
+    bundle.pages[1].body = "backup restore backup restore".into();
+    store.rebuild(&scratch.0, "/bundle", &bundle).unwrap();
+    assert_eq!(
+        store.search(&scratch.0, "backup restore", 1).unwrap()[0].path,
+        "lesson.md"
+    );
+}

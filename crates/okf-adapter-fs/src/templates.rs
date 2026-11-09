@@ -90,10 +90,8 @@ pub fn install_profiles(
     if config.exists() && current.is_none() { /* Keep the invalid user file untouched. */
     } else {
         let mut value = current.unwrap_or_else(|| {
-            serde_json::from_str(include_str!(
-                "../templates/workflows/config.json"
-            ))
-            .expect("packaged workflow config is valid")
+            serde_json::from_str(include_str!("../templates/workflows/config.json"))
+                .expect("packaged workflow config is valid")
         });
         let requested = Value::Array(
             selected

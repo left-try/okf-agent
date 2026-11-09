@@ -163,3 +163,27 @@ fn repository_index_is_not_mistaken_for_a_bundle_index() {
     assert!(text.contains("run bundle index first"), "{text}");
     assert!(!text.contains("no such column"), "{text}");
 }
+
+#[test]
+fn existing_assets_and_directories_are_not_broken_links() {
+    let scratch = Scratch::new();
+    let root = scratch.0.join("bundle");
+    let index = scratch.0.join("index");
+    fs::create_dir_all(root.join("guide")).unwrap();
+    fs::write(root.join("image.png"), "image").unwrap();
+    fs::write(root.join("note.md"), "---\ntitle: Note\ntype: note\n---\n![image](image.png)\n[guide](guide/)\n[missing](missing.png)\n").unwrap();
+    let output = run(&[
+        "bundle",
+        "index",
+        "--root",
+        root.to_str().unwrap(),
+        "--index-root",
+        index.to_str().unwrap(),
+    ]);
+    assert!(output.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let diagnostics = report["diagnostics"].to_string();
+    assert!(!diagnostics.contains("image.png"), "{diagnostics}");
+    assert!(!diagnostics.contains("guide/"), "{diagnostics}");
+    assert!(diagnostics.contains("missing.png"), "{diagnostics}");
+}

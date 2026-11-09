@@ -28,7 +28,7 @@ cargo run --locked -- bundle index --root .\training --index-root .\training-ind
 cargo run --locked -- bundle search "lesson objectives" --root .\training --index-root .\training-index
 ```
 
-The Rust index uses `.okf-index/knowledge.sqlite3` as its disposable local index. `init` creates it, builds the local wiki, and adds `.okf-index/` to `.gitignore` while preserving existing content.
+`index` only builds the disposable index and does not initialize `.okf/` or change `.gitignore`; use `init` for repository setup. The Rust index uses `.okf-index/knowledge.sqlite3` as its disposable local index. `init` creates it, builds the local wiki, and adds `.okf-index/` to `.gitignore` while preserving existing content.
 
 Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. Install the optional MCP server with `cargo install --git https://github.com/left-try/okf-agent.git --locked --features mcp --bin okf-agent`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`.
 
@@ -87,7 +87,7 @@ okf-agent bundle validate --root .\training --index-root .\training-index
 okf-agent bundle export --root .\training --index-root .\training-index
 ~~~
 
-This profile reads OKF v0.2 YAML frontmatter, indexes titles, types, aliases, full metadata, Markdown body, source provenance, and directed Markdown links. Unknown types and fields are retained. Broken or ambiguous links are reported as diagnostics and do not fail standard OKF conformance. Relative links, bundle-root links beginning with `/`, escaped or percent-encoded spaces, anchors, image links, fenced code, and optional `[[wikilinks]]` are supported. The `update` command is an alias for reindexing and never writes to corpus Markdown, so hand edits remain the source of truth. `bundle export` returns nodes, directed links, provenance, and the latest validation result as JSON.
+Search results are ordered by SQLite FTS5 relevance, with title matches weighted more heavily and paths used to break ties. This profile reads OKF v0.2 YAML frontmatter, indexes titles, types, aliases, full metadata, Markdown body, source provenance, and directed Markdown links. Unknown types and fields are retained. Existing non-Markdown files and directories are recorded with asset status and do not create graph edges. Broken or ambiguous links are reported as diagnostics and do not fail standard OKF conformance. Relative links, bundle-root links beginning with `/`, escaped or percent-encoded spaces, anchors, image links, fenced code, and optional `[[wikilinks]]` are supported. The `update` command is an alias for reindexing and never writes to corpus Markdown, so hand edits remain the source of truth. `bundle export` returns nodes, directed links, provenance, and the latest validation result as JSON.
 
 Expose the same API over MCP with `okf-agent mcp --profile bundle --root <bundle> --index-root <index>`. The repository MCP and commands remain on their existing profile. Consumers such as ConceptLoom can use the bundle CLI/MCP contract without installing repository adapters.
 

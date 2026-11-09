@@ -71,25 +71,47 @@ fn escape(s: &str) -> String {
         .replace('\'', "&#39;")
 }
 fn render(md: &str) -> String {
+    use pulldown_cmark::{Event, Parser, Tag, TagEnd};
+    let events = Parser::new(md).map(|event| match event {
+        Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
+        Event::Start(Tag::Link { dest_url, .. }) if !safe_link(&dest_url) => Event::Text("".into()),
+        Event::Start(Tag::Image { .. }) => Event::Text("".into()),
+        Event::End(TagEnd::Image) => Event::Text("".into()),
+        other => other,
+    });
     let mut out = String::new();
-    for line in md.lines() {
-        let s = line.trim();
-        if s.is_empty() {
-            continue;
-        }
-        if let Some(h) = s.strip_prefix("### ") {
-            out.push_str(&format!("<h3>{}</h3>", escape(h)));
-        } else if let Some(h) = s.strip_prefix("## ") {
-            out.push_str(&format!("<h2>{}</h2>", escape(h)));
-        } else if let Some(h) = s.strip_prefix("# ") {
-            out.push_str(&format!("<h1>{}</h1>", escape(h)));
-        } else {
-            out.push_str(&format!("<p>{}</p>", escape(s)));
-        }
-    }
+    pulldown_cmark::html::push_html(&mut out, events);
     out
 }
+fn safe_link(url: &str) -> bool {
+    let value = url.trim().to_ascii_lowercase();
+    !value.starts_with("//")
+        && (!value.contains(':')
+            || value.starts_with("https:")
+            || value.starts_with("http:")
+            || value.starts_with("mailto:"))
+}
 fn page(output: &Path, route: &str, allowed: &BTreeSet<String>) -> (u16, String) {
+    if let Some(query) = route.strip_prefix("/search?q=") {
+        let query = decode(&query.replace('+', " ")).unwrap_or_default();
+        let mut body = format!("<h1>Search results for {}</h1><ul>", escape(&query));
+        if !query.trim().is_empty() {
+            for name in allowed {
+                if let Some((_, path)) = resolve_route(output, &format!("/{name}"), allowed)
+                    && fs::read_to_string(path)
+                        .is_ok_and(|text| text.to_lowercase().contains(&query.to_lowercase()))
+                {
+                    body.push_str(&format!(
+                        "<li><a href=\"/{}\">{}</a></li>",
+                        escape(name),
+                        escape(name)
+                    ));
+                }
+            }
+        }
+        body.push_str("</ul>");
+        return (200, body);
+    }
     let Some((_, path)) = resolve_route(output, route, allowed) else {
         return (404, "<h1>Page not found</h1>".into());
     };
@@ -144,11 +166,11 @@ pub fn serve(root: &Path, host: &str, port: u16) -> Result<(), Diagnostic> {
                 .unwrap_or("/");
             let (status, body) = page(&output, route, &allowed);
             let body = format!(
-                "<!doctype html><meta charset=utf-8><title>OKF</title><nav><a href=\"/\">Repository wiki</a></nav><main>{body}</main>"
+                "<!doctype html><meta charset=utf-8><title>OKF</title><nav><a href=\"/\">Repository wiki</a><form action=\"/search\" method=\"get\"><label>Search <input name=\"q\" type=\"search\"></label><button>Search</button></form></nav><main>{body}</main>"
             );
             let _ = write!(
                 stream,
-                "HTTP/1.1 {status} {}\r\nContent-Type: text/html; charset=utf-8\r\nX-Content-Type-Options: nosniff\r\nContent-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                "HTTP/1.1 {status} {}\r\nContent-Type: text/html; charset=utf-8\r\nX-Content-Type-Options: nosniff\r\nContent-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                 if status == 200 { "OK" } else { "Not Found" },
                 body.len(),
                 body
@@ -156,4 +178,25 @@ pub fn serve(root: &Path, host: &str, port: u16) -> Result<(), Diagnostic> {
         });
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn markdown_links_are_clickable_and_raw_html_is_inert() {
+        let html = render("- [Code Map](code-map.md)\n\n<script>alert(1)</script>\n");
+        assert!(html.contains("href=\"code-map.md\""), "{html}");
+        assert!(!html.contains("<script>"), "{html}");
+    }
+    #[test]
+    fn wiki_search_finds_allowed_page_text() {
+        let root = std::env::temp_dir().join(format!("okf-web-search-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("index.md"), "# searchable quasar").unwrap();
+        let allowed = ["index.md".to_owned()].into_iter().collect();
+        let (_, body) = page(&root, "/search?q=quasar", &allowed);
+        assert!(body.contains("index.md"), "{body}");
+        fs::remove_dir_all(root).unwrap();
+    }
 }
