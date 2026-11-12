@@ -1,6 +1,6 @@
 //! Command-line parsing and dispatch for OKF Agent.
 
-use std::ffi::OsString;
+use std::{ffi::OsString, io::IsTerminal};
 
 use clap::{Parser, Subcommand};
 use serde_json::json;
@@ -53,7 +53,7 @@ enum Command {
     Docs(docs::DocsArgs),
     /// Prepare a repository for an agent and optionally launch its client.
     Run(run::RunArgs),
-    /// Run the optional Model Context Protocol server over stdio.
+    /// Run the Model Context Protocol server over stdio.
     Mcp(mcp::McpArgs),
     /// Install or inspect optional external Codex plugin profiles.
     Skills(skills::SkillsArgs),
@@ -64,10 +64,12 @@ enum Command {
 
 impl Cli {
     pub fn run(self) -> i32 {
-        if matches!(
-            &self.command,
-            Command::Index(_) | Command::Update(_) | Command::Validate(_) | Command::Doctor(_)
-        ) && let Some(notice) = okf_adapter_mcp::update_check::cli_notice()
+        if std::io::stderr().is_terminal()
+            && matches!(
+                &self.command,
+                Command::Index(_) | Command::Update(_) | Command::Validate(_) | Command::Doctor(_)
+            )
+            && let Some(notice) = okf_adapter_mcp::update_check::cli_notice()
         {
             eprintln!(
                 "okf-agent update available: {} (installed {}); {}",

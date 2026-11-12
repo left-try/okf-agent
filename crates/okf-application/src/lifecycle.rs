@@ -61,6 +61,9 @@ pub trait LifecycleFs {
         workflow_profiles: bool,
     ) -> Result<InstallReport, Diagnostic>;
     fn validate_files(&self, root: &Path) -> Result<ValidationReport, Diagnostic>;
+    fn facts_are_current(&self, _root: &Path, _facts: &DetectedFacts) -> Result<bool, Diagnostic> {
+        Ok(true)
+    }
     fn record_decision(
         &self,
         root: &Path,
@@ -149,6 +152,18 @@ pub fn validate(
                 .warnings
                 .push("Index freshness could not be checked".to_owned()),
         },
+    }
+    match catalog
+        .detect(root)
+        .and_then(|facts| fs.facts_are_current(root, &facts))
+    {
+        Ok(false) => report
+            .warnings
+            .push("Generated facts are stale; run `okf-agent update`".to_owned()),
+        Err(_) => report
+            .warnings
+            .push("Generated facts freshness could not be checked".to_owned()),
+        Ok(true) => {}
     }
     report.ok = report.errors.is_empty();
     Ok(report)

@@ -14,7 +14,7 @@ fn version_uses_the_rust_binary_name_and_workspace_version() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "okf-agent 0.2.1"
+        "okf-agent 0.2.2"
     );
 }
 
@@ -79,7 +79,7 @@ fn unported_command_returns_structured_json_and_exit_code_two() {
 }
 
 #[test]
-fn cached_update_notice_goes_to_stderr_without_corrupting_json() {
+fn cached_update_notice_keeps_noninteractive_stderr_clean() {
     let root = std::env::temp_dir().join(format!("okf-update-notice-{}", std::process::id()));
     std::fs::create_dir_all(root.join("okf-agent")).unwrap();
     let now = std::time::SystemTime::now()
@@ -100,6 +100,6 @@ fn cached_update_notice_goes_to_stderr_without_corrupting_json() {
         .unwrap();
     assert!(output.status.success());
     assert!(serde_json::from_slice::<serde_json::Value>(&output.stdout).is_ok());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("999.0.0"));
+    assert!(output.stderr.is_empty());
     let _ = std::fs::remove_dir_all(root);
 }

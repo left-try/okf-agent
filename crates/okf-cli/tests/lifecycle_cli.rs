@@ -118,3 +118,30 @@ fn install_and_record_decision_return_machine_readable_paths() {
             .contains("Native implementation")
     );
 }
+
+#[test]
+fn validate_warns_when_generated_facts_are_stale() {
+    let scratch = Scratch::new();
+    let root = scratch.0.to_str().unwrap();
+    assert!(run(&["update", root]).status.success());
+    fs::write(scratch.0.join("pubspec.yaml"), "name: app\n").unwrap();
+    fs::write(scratch.0.join("main.dart"), "void main() {}\n").unwrap();
+    assert!(run(&["index", root]).status.success());
+    let output = run(&["validate", root]);
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(
+        report["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("facts")),
+        "{report}"
+    );
+    assert!(run(&["update", root]).status.success());
+    let output = run(&["validate", root]);
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(
+        report["warnings"].as_array().unwrap().is_empty(),
+        "{report}"
+    );
+}
