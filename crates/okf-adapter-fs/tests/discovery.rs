@@ -104,3 +104,23 @@ fn truncates_at_500_000_unicode_characters_without_splitting_utf8() {
 
     assert_eq!(documents[0].content, expected);
 }
+
+#[test]
+fn indexes_flutter_sources_and_detects_manifest() {
+    let scratch = Scratch::new();
+    fs::write(
+        scratch.0.join("pubspec.yaml"),
+        "name: demo\ndependencies:\n  flutter:\n    sdk: flutter\n",
+    )
+    .unwrap();
+    fs::write(scratch.0.join("main.dart"), "void main() {}\n").unwrap();
+    let docs = FsSourceCatalog.discover(&scratch.0).unwrap();
+    assert_eq!(
+        docs.iter().map(|d| d.path.as_str()).collect::<Vec<_>>(),
+        ["main.dart", "pubspec.yaml"]
+    );
+    let facts = FsSourceCatalog.detect(&scratch.0).unwrap();
+    assert!(facts.languages.contains(&"Dart".to_string()));
+    assert!(facts.framework_hints.contains(&"Flutter".to_string()));
+    assert!(facts.manifests.contains(&"pubspec.yaml".to_string()));
+}

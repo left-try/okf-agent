@@ -68,6 +68,40 @@ impl LifecycleFs for FsLifecycle {
         })
     }
 
+    fn facts_are_current(
+        &self,
+        root: &Path,
+        facts: &okf_application::repository_index::DetectedFacts,
+    ) -> Result<bool, Diagnostic> {
+        let overview = fs::read_to_string(root.join(".okf/application/overview.md"))
+            .map_err(|e| Diagnostic::new(ErrorKind::Io, e.to_string()))?;
+        let architecture = fs::read_to_string(root.join(".okf/architecture/index.md"))
+            .map_err(|e| Diagnostic::new(ErrorKind::Io, e.to_string()))?;
+        let value = |items: &[String], empty: &str| {
+            if items.is_empty() {
+                empty.to_owned()
+            } else {
+                items.join(", ")
+            }
+        };
+        let generated = |text: String| -> Option<String> {
+            let (_, rest) = text.split_once(crate::generated_blocks::GENERATED_START)?;
+            let (body, _) = rest.split_once(crate::generated_blocks::GENERATED_END)?;
+            Some(body.trim().to_owned())
+        };
+        Ok(generated(overview)
+            == Some(format!(
+                "## Generated facts\n- Languages: {}\n- Framework hints: {}",
+                value(&facts.languages, "unknown"),
+                value(&facts.framework_hints, "none")
+            ))
+            && generated(architecture)
+                == Some(format!(
+                    "## Generated facts\n- Manifests: {}",
+                    value(&facts.manifests, "none")
+                )))
+    }
+
     fn validate_files(&self, root: &Path) -> Result<ValidationReport, Diagnostic> {
         let root =
             fs::canonicalize(root).map_err(|e| Diagnostic::new(ErrorKind::Io, e.to_string()))?;

@@ -16,9 +16,10 @@ const SKIP: &[&str] = &[
     "__pycache__",
 ];
 const SUFFIXES: &[&str] = &[
-    "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php",
+    "dart", "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php",
 ];
 const MANIFESTS: &[&str] = &[
+    "pubspec.yaml",
     "pyproject.toml",
     "requirements.txt",
     "package.json",
@@ -45,6 +46,7 @@ impl SourceCatalog for FsSourceCatalog {
         names.sort();
         let mut facts = DetectedFacts::default();
         for (manifest, language, framework) in [
+            ("pubspec.yaml", "Dart", None),
             ("pyproject.toml", "Python", None),
             ("requirements.txt", "Python", None),
             ("package.json", "JavaScript", Some("Node.js")),
@@ -57,6 +59,18 @@ impl SourceCatalog for FsSourceCatalog {
                 facts.manifests.push(manifest.to_owned());
                 if let Some(framework) = framework {
                     facts.framework_hints.push(framework.to_owned());
+                }
+            }
+        }
+        for entry in walker(root) {
+            let entry = entry.map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
+            if entry.file_type().is_some_and(|kind| kind.is_file())
+                && entry.file_name() == "pubspec.yaml"
+            {
+                let text = std::fs::read_to_string(entry.path())
+                    .map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
+                if text.lines().any(|line| line.trim() == "sdk: flutter") {
+                    facts.framework_hints.push("Flutter".to_owned());
                 }
             }
         }

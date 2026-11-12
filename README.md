@@ -30,9 +30,9 @@ cargo run --locked -- bundle search "lesson objectives" --root .\training --inde
 
 `index` only builds the disposable index and does not initialize `.okf/` or change `.gitignore`; use `init` for repository setup. The Rust index uses `.okf-index/knowledge.sqlite3` as its disposable local index. `init` creates it, builds the local wiki, and adds `.okf-index/` to `.gitignore` while preserving existing content.
 
-Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. Install the optional MCP server with `cargo install --git https://github.com/left-try/okf-agent.git --locked --features mcp --bin okf-agent`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`.
+Build with `--features watcher` to have `run <agent>` refresh the index while the client runs. The MCP server is included in standard builds; install with `cargo install --git https://github.com/left-try/okf-agent.git --locked --bin okf-agent`. Repository mode defaults to `--repo .`; bundle mode requires both `--root` and `--index-root`.
 
-The repository MCP server checks GitHub's latest release in the background on startup and every 24 hours while it runs. When a newer stable version is found, subsequent `okf.get_change_context` responses include an `update_notice` for the coding agent. Repository CLI commands `index`, `update`, `validate`, and `doctor` also check at most daily and print notices to stderr without changing JSON output. A check uses `curl` if available and has a three-second timeout. It sends no repository contents and does not install updates; offline or failed checks are silent. Set `OKF_DISABLE_UPDATE_CHECK` to disable it. Bundle-profile commands do not perform this check.
+The repository MCP server checks GitHub's latest release in the background on startup and every 24 hours while it runs. When a newer stable version is found, subsequent `okf.get_change_context` responses include an `update_notice` for the coding agent. Repository CLI commands `index`, `update`, `validate`, and `doctor` also check at most daily and print notices to stderr only when it is an interactive terminal, without changing JSON output. A check uses `curl` if available and has a three-second timeout. It sends no repository contents and does not install updates; offline or failed checks are silent. Set `OKF_DISABLE_UPDATE_CHECK` to disable it. Bundle-profile commands do not perform this check.
 
 ## One-Time User Setup
 
@@ -101,7 +101,7 @@ okf-agent install
 
 Restart Codex afterwards. For Claude Code, Cursor, and Gemini CLI, the project-native files created by `init` are loaded whenever the user opens that repository.
 
-`okf-agent run <agent>` prepares the repository and can launch the named client. It writes the project-native instructions, but the computed context in its JSON payload is not injected into the launched client. Configure the optional MCP server in a client to expose context retrieval and update tools directly.
+`okf-agent run <agent>` prepares the repository and can launch the named client. It writes the project-native instructions, but the computed context in its JSON payload is not injected into the launched client. Configure the MCP server in a client to expose context retrieval and update tools directly.
 
 ## Adaptive Development Workflows
 
