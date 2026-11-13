@@ -81,7 +81,7 @@ pub fn run(args: BundleArgs) -> i32 {
             index_root,
             wikilinks,
         } => match perform_index(&root, &index_root, wikilinks) {
-            Ok(report) => print_json(&report, 0),
+            Ok(report) => print_json(&report, if report.conformant { 0 } else { 1 }),
             Err(error) => error_json(error),
         },
         BundleCommand::Validate { root, index_root } => {

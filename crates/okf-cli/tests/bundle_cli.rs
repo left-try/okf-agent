@@ -187,3 +187,25 @@ fn existing_assets_and_directories_are_not_broken_links() {
     assert!(!diagnostics.contains("guide/"), "{diagnostics}");
     assert!(diagnostics.contains("missing.png"), "{diagnostics}");
 }
+
+#[test]
+fn bundle_index_and_update_return_one_for_conformance_errors() {
+    let scratch = Scratch::new();
+    let root = scratch.0.join("bundle");
+    let index = scratch.0.join("index");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("note.md"), "No frontmatter\n").unwrap();
+    for command in ["index", "update"] {
+        let output = run(&[
+            "bundle",
+            command,
+            "--root",
+            root.to_str().unwrap(),
+            "--index-root",
+            index.to_str().unwrap(),
+        ]);
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["conformant"], false);
+        assert_eq!(output.status.code(), Some(1), "{command}: {report}");
+    }
+}

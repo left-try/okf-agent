@@ -14,7 +14,7 @@ fn version_uses_the_rust_binary_name_and_workspace_version() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "okf-agent 0.2.2"
+        "okf-agent 0.2.3"
     );
 }
 
