@@ -117,6 +117,23 @@ fn install_and_record_decision_return_machine_readable_paths() {
             .unwrap()
             .contains("Native implementation")
     );
+    let decision_alias = run(&[
+        "record-decision",
+        scratch.0.to_str().unwrap(),
+        "--title",
+        "Use Slint",
+        "--summary",
+        "Declarative native UI",
+    ]);
+    assert!(decision_alias.status.success());
+    let report_alias: serde_json::Value = serde_json::from_slice(&decision_alias.stdout).unwrap();
+    let path_alias = report_alias["path"].as_str().unwrap();
+    assert!(scratch.0.join(path_alias).is_file());
+    assert!(
+        fs::read_to_string(scratch.0.join(path_alias))
+            .unwrap()
+            .contains("Declarative native UI")
+    );
 }
 
 #[test]

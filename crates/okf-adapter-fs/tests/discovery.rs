@@ -45,6 +45,7 @@ fn discovers_rust_and_manifests_in_sorted_order_and_skips_generated_directories(
         "venv",
         "dist",
         "build",
+        "target",
         "__pycache__",
     ] {
         fs::create_dir_all(scratch.0.join(dir)).unwrap();
@@ -123,4 +124,29 @@ fn indexes_flutter_sources_and_detects_manifest() {
     assert!(facts.languages.contains(&"Dart".to_string()));
     assert!(facts.framework_hints.contains(&"Flutter".to_string()));
     assert!(facts.manifests.contains(&"pubspec.yaml".to_string()));
+}
+
+#[test]
+fn indexes_slint_sources_and_detects_slint_framework() {
+    let scratch = Scratch::new();
+    fs::write(
+        scratch.0.join("Cargo.toml"),
+        "[package]\nname = \"demo\"\n[dependencies]\nslint = \"1.8\"\n",
+    )
+    .unwrap();
+    fs::create_dir_all(scratch.0.join("ui")).unwrap();
+    fs::write(
+        scratch.0.join("ui/app.slint"),
+        "export component MainWindow {}\n",
+    )
+    .unwrap();
+    let docs = FsSourceCatalog.discover(&scratch.0).unwrap();
+    assert_eq!(
+        docs.iter().map(|d| d.path.as_str()).collect::<Vec<_>>(),
+        ["Cargo.toml", "ui/app.slint"]
+    );
+    let facts = FsSourceCatalog.detect(&scratch.0).unwrap();
+    assert!(facts.languages.contains(&"Rust".to_string()));
+    assert!(facts.framework_hints.contains(&"Slint".to_string()));
+    assert!(facts.manifests.contains(&"Cargo.toml".to_string()));
 }

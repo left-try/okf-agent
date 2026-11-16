@@ -176,3 +176,63 @@ fn rebuild_rejects_an_index_directory_symlink_that_escapes_the_repository() {
     assert!(error.to_string().contains("outside the repository root"));
     assert!(!outside.0.join("knowledge.sqlite3").exists());
 }
+
+#[test]
+fn index_extracts_rust_declarations_and_slint_without_false_positives_from_comments_strings_or_manifests() {
+    let scratch = Scratch::new();
+    let store = SqliteIndexStore;
+    let docs = vec![
+        SourceDocument {
+            path: "crates/stovo-desktop-app/src/app/reducer.rs".into(),
+            content: "/// Pure state transition function delegating to `stovo_application::reduce`.\npub fn reduce(state: &mut State, event: AppEvent) -> bool {\n    false\n}\n".into(),
+        },
+        SourceDocument {
+            path: "crates/stovo-application/src/lib.rs".into(),
+            content: "use stovo_domain::Model;\npub fn run() {\n    let _ = reduce(&mut state, AppEvent::UpdateComposerDraft(\"Hello from Slint native!\".to_string()));\n}\n".into(),
+        },
+        SourceDocument {
+            path: "crates/stovo-application/src/onboarding.rs".into(),
+            content: "/// Builds a `ServerProfile` from a validated normalized URL and optional family/space name.\npub struct ServerProfile;\n".into(),
+        },
+        SourceDocument {
+            path: "crates/stovo-shared-utils/Cargo.toml".into(),
+            content: "[package]\ndescription = \"Reusable pure-Rust utilities ported 1:1 from stovo-messenger/frontend/src\"\n".into(),
+        },
+        SourceDocument {
+            path: "crates/stovo-shared-utils/src/lib.rs".into(),
+            content: "//! Smaller models MUST import these functions rather than re-implementing them per screen.\npub mod utils;\npub enum Route { Home }\npub trait Handler {}\n".into(),
+        },
+        SourceDocument {
+            path: "ui/app.slint".into(),
+            content: "import { Button } from \"std-widgets.slint\";\nexport component MainWindow {}\nexport global AppTheme {}\nexport struct User {}\n".into(),
+        },
+    ];
+
+    store.rebuild(&scratch.0, &docs).unwrap();
+    let indexed = store.indexed_content(&scratch.0).unwrap();
+
+    let symbol_names: Vec<&str> = indexed.symbols.iter().map(|s| s.name.as_str()).collect();
+    let edge_targets: Vec<&str> = indexed.edges.iter().map(|e| e.target.as_str()).collect();
+
+    // Verify absence of false-positive symbols and import edges (Issue 35)
+    assert!(!symbol_names.contains(&"delegating"), "comments must not generate symbols");
+    assert!(!edge_targets.contains(&"Slint"), "strings must not generate import edges");
+    assert!(!edge_targets.contains(&"a"), "doc comments must not generate import edges");
+    assert!(!edge_targets.contains(&"stovo"), "manifest prose must not generate import edges");
+    assert!(!edge_targets.contains(&"these"), "doc comments must not generate import edges");
+
+    // Verify Rust fn, enum, trait, mod symbols and use/mod edges (Issue 36)
+    assert!(symbol_names.contains(&"reduce"), "Rust fn symbol must be indexed");
+    assert!(symbol_names.contains(&"Route"), "Rust enum symbol must be indexed");
+    assert!(symbol_names.contains(&"Handler"), "Rust trait symbol must be indexed");
+    assert!(symbol_names.contains(&"utils"), "Rust mod symbol must be indexed");
+    assert!(symbol_names.contains(&"ServerProfile"), "Rust struct symbol must be indexed");
+    assert!(edge_targets.contains(&"stovo_domain::Model"), "Rust use edge must be indexed");
+    assert!(edge_targets.contains(&"utils"), "Rust mod edge must be indexed");
+
+    // Verify Slint symbols and imports (Issue 37)
+    assert!(symbol_names.contains(&"MainWindow"), "Slint component must be indexed");
+    assert!(symbol_names.contains(&"AppTheme"), "Slint global must be indexed");
+    assert!(symbol_names.contains(&"User"), "Slint struct must be indexed");
+    assert!(edge_targets.contains(&"std-widgets.slint"), "Slint import edge must be indexed");
+}

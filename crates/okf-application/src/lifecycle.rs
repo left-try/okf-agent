@@ -85,7 +85,9 @@ pub fn initialize(
     let created = fs.initialize_files(root, profiles)?;
     let index_report = repository_index::build(root, catalog, index)?;
     let facts = catalog.detect(root)?;
-    refresh_generated(root, &git.changed_files(root), &facts, fs)?;
+    let mut changed = git.changed_files(root);
+    changed.retain(|path| !is_excluded_from_changes(root, path));
+    refresh_generated(root, &changed, &facts, fs)?;
     let git_dir = git.git_dir(root);
     let installed = fs.install_adapters(root, git_dir.as_deref(), !profiles.is_empty())?;
     Ok(InitReport {
@@ -106,9 +108,10 @@ pub fn update(
     index: &impl IndexStore,
 ) -> Result<UpdateReport, Diagnostic> {
     fs.initialize_files(root, &[])?;
-    let changed_files = changed
+    let mut changed_files = changed
         .map(<[String]>::to_vec)
         .unwrap_or_else(|| git.changed_files(root));
+    changed_files.retain(|path| !is_excluded_from_changes(root, path));
     let facts = catalog.detect(root)?;
     refresh_generated(root, &changed_files, &facts, fs)?;
     let index = repository_index::build(root, catalog, index)?;
@@ -241,4 +244,28 @@ fn refresh_generated(
         &format!("Changed files:\n{files}"),
     )?;
     Ok(())
+}
+
+fn is_excluded_from_changes(root: &Path, relative: &str) -> bool {
+    let normalized = relative.replace('\\', "/");
+    if normalized == ".okf/changes/current.md" {
+        return true;
+    }
+    let rel_path = Path::new(&normalized);
+    let mut current = rel_path.parent();
+    while let Some(parent) = current {
+        if parent.as_os_str().is_empty() {
+            break;
+        }
+        let manifest_path = root.join(parent).join("manifest.json");
+        if manifest_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                if content.contains("\"schema_version\"") && content.contains("\"outputs\"") {
+                    return true;
+                }
+            }
+        }
+        current = parent.parent();
+    }
+    false
 }
