@@ -135,3 +135,45 @@ fn validate_keeps_missing_index_as_a_warning() {
             .any(|warning| warning.contains("Index is absent"))
     );
 }
+
+#[test]
+fn update_excludes_current_md_and_generated_docs_from_changed_files() {
+    let fs = Fs::default();
+    let root = std::env::temp_dir().join(format!("okf-test-lifecycle-exclude-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("docs/reference")).unwrap();
+    std::fs::write(
+        root.join("docs/reference/manifest.json"),
+        r#"{"schema_version":1,"sources":{},"outputs":{}}"#,
+    )
+    .unwrap();
+
+    let input_changes = vec![
+        "src/lib.rs".to_string(),
+        ".okf/changes/current.md".to_string(),
+        "docs/reference/code-map.md".to_string(),
+        "docs/reference/manifest.json".to_string(),
+        "docs/reference/source/.okf/changes/current.md".to_string(),
+    ];
+
+    let update = lifecycle::update(
+        &root,
+        Some(&input_changes),
+        &fs,
+        &Git,
+        &Catalog,
+        &Store,
+    )
+    .unwrap();
+
+    assert_eq!(update.changed_files, vec!["src/lib.rs"]);
+    assert!(
+        fs.writes
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(path, body)| path == ".okf/changes/current.md" && body.contains("src/lib.rs") && !body.contains("docs/reference") && !body.contains(".okf/changes/current.md"))
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}

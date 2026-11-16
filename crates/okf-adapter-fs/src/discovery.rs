@@ -13,10 +13,11 @@ const SKIP: &[&str] = &[
     "venv",
     "dist",
     "build",
+    "target",
     "__pycache__",
 ];
 const SUFFIXES: &[&str] = &[
-    "dart", "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php",
+    "dart", "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php", "slint",
 ];
 const MANIFESTS: &[&str] = &[
     "pubspec.yaml",
@@ -64,13 +65,29 @@ impl SourceCatalog for FsSourceCatalog {
         }
         for entry in walker(root) {
             let entry = entry.map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
-            if entry.file_type().is_some_and(|kind| kind.is_file())
-                && entry.file_name() == "pubspec.yaml"
-            {
-                let text = std::fs::read_to_string(entry.path())
-                    .map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
-                if text.lines().any(|line| line.trim() == "sdk: flutter") {
-                    facts.framework_hints.push("Flutter".to_owned());
+            if entry.file_type().is_some_and(|kind| kind.is_file()) {
+                if entry.file_name() == "pubspec.yaml" {
+                    let text = std::fs::read_to_string(entry.path())
+                        .map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
+                    if text.lines().any(|line| line.trim() == "sdk: flutter") {
+                        facts.framework_hints.push("Flutter".to_owned());
+                    }
+                } else if entry.file_name() == "Cargo.toml" {
+                    let text = std::fs::read_to_string(entry.path())
+                        .map_err(|error| Diagnostic::new(ErrorKind::Io, error.to_string()))?;
+                    if text.lines().any(|line| {
+                        let trimmed = line.trim();
+                        trimmed.starts_with("slint ")
+                            || trimmed.starts_with("slint=")
+                            || trimmed.starts_with("\"slint\"")
+                            || trimmed.starts_with("'slint'")
+                            || trimmed.starts_with("[dependencies.slint")
+                            || trimmed.starts_with("[build-dependencies.slint")
+                            || trimmed.starts_with("slint-build ")
+                            || trimmed.starts_with("slint-build=")
+                    }) {
+                        facts.framework_hints.push("Slint".to_owned());
+                    }
                 }
             }
         }
