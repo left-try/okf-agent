@@ -2,5 +2,6 @@
 
 <!-- okf:generated:start -->
 Changed files:
-- No Git diff detected
+- `Cargo.toml`
+- `crates/okf-adapter-sqlite/src/repository.rs`
 <!-- okf:generated:end -->
