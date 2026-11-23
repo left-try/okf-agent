@@ -47,7 +47,7 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/okf-agent.exe" $staging/
           Compress-Archive -Path $staging -DestinationPath "$staging.zip"
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: okf-agent-${{ matrix.target }}
           path: okf-agent-${{ matrix.target }}.${{ matrix.archive }}
