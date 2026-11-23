@@ -12,7 +12,7 @@ default-members = ["crates/okf-cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT OR Apache-2.0"
@@ -26,7 +26,10 @@ all = "deny"
 [workspace.dependencies]
 clap = { version = "4.6", features = ["derive"] }
 notify = "8.2"
+petgraph = "0.7"
 regex = "1"
+tree-sitter = "0.25"
+tree-sitter-rust = "0.23"
 rusqlite = { version = "0.40", features = ["bundled"] }
 rmcp = { version = "3.5", default-features = false, features = ["server", "transport-io", "macros"] }
 serde = { version = "1", features = ["derive"] }

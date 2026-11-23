@@ -75,3 +75,35 @@ fn boundary_violations_are_detected_from_edges() {
     assert_eq!(violations.len(), 1);
     assert!(violations[0].contains("Boundary violation in `crates/domain/src/lib.rs`"));
 }
+
+#[test]
+fn doc_drift_is_detected_when_mapped_code_changes_without_docs() {
+    use okf_domain::gate::{DocMapping, check_doc_drift};
+
+    let mappings = vec![
+        DocMapping {
+            code: "crates/okf-application/**".into(),
+            doc: ".okf/application/overview.md".into(),
+        },
+        DocMapping {
+            code: "crates/okf-domain/src/gate.rs".into(),
+            doc: ".okf/architecture/index.md".into(),
+        },
+    ];
+
+    let changed = vec![
+        "crates/okf-application/src/gate.rs".to_string(),
+        "crates/okf-application/src/lib.rs".to_string(),
+    ];
+    let warnings = check_doc_drift(&mappings, &changed);
+    assert_eq!(warnings.len(), 1);
+    assert!(warnings[0].contains("Documentation drift detected"));
+    assert!(warnings[0].contains("crates/okf-application/**"));
+
+    let changed_with_docs = vec![
+        "crates/okf-application/src/gate.rs".to_string(),
+        ".okf/application/overview.md".to_string(),
+    ];
+    let warnings_ok = check_doc_drift(&mappings, &changed_with_docs);
+    assert!(warnings_ok.is_empty());
+}

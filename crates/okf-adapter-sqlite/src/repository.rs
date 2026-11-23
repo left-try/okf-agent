@@ -324,6 +324,72 @@ fn strip_python_comments_and_strings(source: &str) -> String {
     result
 }
 
+#[cfg(feature = "treesitter")]
+fn parse_rust_treesitter(content: &str) -> Option<(Vec<String>, Vec<String>)> {
+    let mut parser = tree_sitter::Parser::new();
+    let language = tree_sitter_rust::LANGUAGE.into();
+    parser.set_language(&language).ok()?;
+    let tree = parser.parse(content, None)?;
+    let root = tree.root_node();
+
+    let mut symbols = Vec::new();
+    let mut edges = Vec::new();
+    let bytes = content.as_bytes();
+
+    let mut cursor = root.walk();
+    for child in root.children(&mut cursor) {
+        match child.kind() {
+            "function_item" | "struct_item" | "enum_item" | "trait_item" | "type_item" => {
+                if let Some(name_node) = child.child_by_field_name("name") {
+                    if let Ok(name) = name_node.utf8_text(bytes) {
+                        symbols.push(name.to_string());
+                    }
+                }
+            }
+            "mod_item" => {
+                if let Some(name_node) = child.child_by_field_name("name") {
+                    if let Ok(name) = name_node.utf8_text(bytes) {
+                        symbols.push(name.to_string());
+                        // If it's a module declaration (`mod foo;`), it acts as an import/submodule edge
+                        if child.child_by_field_name("body").is_none() {
+                            edges.push(name.to_string());
+                        }
+                    }
+                }
+            }
+            "impl_item" => {
+                if let Some(type_node) = child.child_by_field_name("type") {
+                    if let Ok(type_name) = type_node.utf8_text(bytes) {
+                        // Take primary ident of the type
+                        let clean = type_name.split('<').next().unwrap_or(type_name).trim();
+                        if !clean.is_empty() {
+                            symbols.push(clean.to_string());
+                        }
+                    }
+                }
+            }
+            "use_declaration" => {
+                if let Some(arg) = child.child_by_field_name("argument") {
+                    if let Ok(path_text) = arg.utf8_text(bytes) {
+                        let clean = path_text
+                            .split('{')
+                            .next()
+                            .unwrap_or(path_text)
+                            .trim()
+                            .trim_end_matches(':');
+                        if !clean.is_empty() {
+                            edges.push(clean.to_string());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Some((symbols, edges))
+}
+
 fn extract_symbols_and_edges(path: &str, content: &str) -> (Vec<String>, Vec<String>) {
     let ext = Path::new(path)
         .extension()
@@ -339,6 +405,14 @@ fn extract_symbols_and_edges(path: &str, content: &str) -> (Vec<String>, Vec<Str
 
     match ext.as_str() {
         "rs" => {
+            #[cfg(feature = "treesitter")]
+            {
+                if let Some((ts_symbols, ts_edges)) = parse_rust_treesitter(content) {
+                    symbols.extend(ts_symbols);
+                    edges.extend(ts_edges);
+                    return (symbols, edges);
+                }
+            }
             let stripped = strip_c_comments_and_strings(content, true);
             for cap in RUST_SYMBOL.captures_iter(&stripped) {
                 if let Some(m) = cap.get(1) {

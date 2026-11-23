@@ -73,6 +73,12 @@ pub trait LifecycleFs {
     ) -> Result<Vec<okf_domain::gate::BoundaryRule>, Diagnostic> {
         Ok(Vec::new())
     }
+    fn load_doc_mappings(
+        &self,
+        _root: &Path,
+    ) -> Result<Vec<okf_domain::gate::DocMapping>, Diagnostic> {
+        Ok(Vec::new())
+    }
     fn record_decision(
         &self,
         root: &Path,
@@ -281,12 +287,12 @@ fn is_excluded_from_changes(root: &Path, relative: &str) -> bool {
             break;
         }
         let manifest_path = root.join(parent).join("manifest.json");
-        if manifest_path.is_file() {
-            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-                if content.contains("\"schema_version\"") && content.contains("\"outputs\"") {
-                    return true;
-                }
-            }
+        if manifest_path.is_file()
+            && let Ok(content) = std::fs::read_to_string(&manifest_path)
+            && content.contains("\"schema_version\"")
+            && content.contains("\"outputs\"")
+        {
+            return true;
         }
         current = parent.parent();
     }
