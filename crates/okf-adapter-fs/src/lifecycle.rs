@@ -190,6 +190,35 @@ impl LifecycleFs for FsLifecycle {
         Ok(report)
     }
 
+    fn load_boundaries(
+        &self,
+        root: &Path,
+    ) -> Result<Vec<okf_domain::gate::BoundaryRule>, Diagnostic> {
+        let boundaries_yaml = root.join(".okf/boundaries.yaml");
+        let manifest_yaml = root.join(".okf/manifest.yaml");
+        let mut rules = Vec::new();
+
+        if boundaries_yaml.is_file() {
+            let text = fs::read_to_string(&boundaries_yaml).map_err(|e| {
+                Diagnostic::new(ErrorKind::Io, e.to_string()).at_path(".okf/boundaries.yaml")
+            })?;
+            if let Ok(config) = serde_saphyr::from_str::<okf_domain::gate::BoundariesConfig>(&text)
+            {
+                rules.extend(config.all_rules());
+            }
+        }
+        if manifest_yaml.is_file() {
+            let text = fs::read_to_string(&manifest_yaml).map_err(|e| {
+                Diagnostic::new(ErrorKind::Io, e.to_string()).at_path(".okf/manifest.yaml")
+            })?;
+            if let Ok(config) = serde_saphyr::from_str::<okf_domain::gate::BoundariesConfig>(&text)
+            {
+                rules.extend(config.all_rules());
+            }
+        }
+        Ok(rules)
+    }
+
     fn record_decision(
         &self,
         root: &Path,

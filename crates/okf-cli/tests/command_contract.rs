@@ -58,6 +58,7 @@ fn capabilities_reports_only_the_rust_commands_that_are_ready() {
     assert!(output.status.success());
     let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     let implemented = result["implemented"].as_array().unwrap();
+    assert!(implemented.iter().any(|command| command == "gate"));
     assert!(implemented.iter().any(|command| command == "skills apply"));
     assert!(implemented.iter().any(|command| command == "skills doctor"));
     assert_eq!(

@@ -42,6 +42,8 @@ enum Command {
     Update(lifecycle::UpdateArgs),
     /// Validate repository-owned OKF knowledge.
     Validate(lifecycle::ValidateArgs),
+    /// Check cognitive debt gates (diff size, test weakening, escape hatches, boundaries).
+    Gate(lifecycle::GateArgs),
     /// Report repository and client readiness.
     Doctor(lifecycle::DoctorArgs),
     /// Install the Codex OKF skill.
@@ -96,6 +98,7 @@ impl Cli {
                     "bundle export",
                     "update",
                     "validate",
+                    "gate",
                     "doctor",
                     "install",
                     "record-decision",
@@ -121,6 +124,7 @@ impl Cli {
             Command::Bundle(args) => bundle::run(args),
             Command::Update(args) => lifecycle::update(args),
             Command::Validate(args) => lifecycle::validate(args),
+            Command::Gate(args) => lifecycle::gate(args),
             Command::Doctor(args) => lifecycle::doctor(args),
             Command::Install(args) => lifecycle::install(args),
             Command::RecordDecision(args) => lifecycle::record_decision(args),

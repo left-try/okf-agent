@@ -58,6 +58,17 @@ pub struct ValidateArgs {
     pub path: PathBuf,
 }
 #[derive(Debug, Args)]
+pub struct GateArgs {
+    #[arg(default_value = ".")]
+    pub path: PathBuf,
+    #[arg(long, default_value_t = 400)]
+    pub max_loc: usize,
+    #[arg(long)]
+    pub allow_weakening: bool,
+    #[arg(long)]
+    pub allow_escapes: bool,
+}
+#[derive(Debug, Args)]
 pub struct DoctorArgs {
     #[arg(default_value = ".")]
     pub path: PathBuf,
@@ -99,6 +110,21 @@ pub fn validate(args: ValidateArgs) -> i32 {
         &root,
         &okf_adapter_fs::lifecycle::FsLifecycle,
         &okf_adapter_fs::discovery::FsSourceCatalog,
+        &okf_adapter_sqlite::repository::SqliteIndexStore,
+    ) {
+        Ok(result) => emit(&result, if result.ok { 0 } else { 1 }),
+        Err(error) => diagnostic(error),
+    }
+}
+pub fn gate(args: GateArgs) -> i32 {
+    let root = root(&args.path);
+    match okf_application::gate::run_gate(
+        &root,
+        args.max_loc,
+        args.allow_weakening,
+        args.allow_escapes,
+        &okf_adapter_git::Git,
+        &okf_adapter_fs::lifecycle::FsLifecycle,
         &okf_adapter_sqlite::repository::SqliteIndexStore,
     ) {
         Ok(result) => emit(&result, if result.ok { 0 } else { 1 }),

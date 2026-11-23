@@ -1,3 +1,4 @@
+#![deny(warnings)]
 //! Filesystem, template, and serialization adapters.
 
 pub mod bundle;

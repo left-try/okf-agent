@@ -1,3 +1,4 @@
+#![deny(warnings)]
 //! Optional MCP delivery adapter.
 
 #[cfg(feature = "mcp")]

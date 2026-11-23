@@ -145,3 +145,51 @@ fn validate_warns_when_generated_facts_are_stale() {
         "{report}"
     );
 }
+
+#[test]
+fn gate_checks_diff_and_boundary_rules() {
+    let scratch = Scratch::new();
+    let root = scratch.0.to_str().unwrap();
+    assert!(run(&["init", root]).status.success());
+
+    // Configure boundary rule: domain cannot import adapter
+    let boundaries = r#"rules:
+  - from: "domain"
+    disallow: ["adapter"]
+"#;
+    fs::write(scratch.0.join(".okf/boundaries.yaml"), boundaries).unwrap();
+
+    // Create violating edge: domain imports adapter
+    fs::create_dir_all(scratch.0.join("domain")).unwrap();
+    fs::write(
+        scratch.0.join("domain/mod.rs"),
+        "use adapter::db;\nfn core() {}\n",
+    )
+    .unwrap();
+    assert!(run(&["index", root]).status.success());
+
+    let gate_res = run(&["gate", root]);
+    assert_eq!(gate_res.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&gate_res.stdout).unwrap();
+    assert!(!report["ok"].as_bool().unwrap());
+    assert!(
+        report["boundary_violations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v.as_str().unwrap().contains("domain/mod.rs"))
+    );
+
+    // Validate also picks up the boundary violation
+    let val_res = run(&["validate", root]);
+    assert_eq!(val_res.status.code(), Some(1));
+    let val_report: serde_json::Value = serde_json::from_slice(&val_res.stdout).unwrap();
+    assert!(!val_report["ok"].as_bool().unwrap());
+    assert!(
+        val_report["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e.as_str().unwrap().contains("Boundary violation"))
+    );
+}

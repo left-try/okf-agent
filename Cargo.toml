@@ -16,6 +16,12 @@ version = "0.2.3"
 edition = "2024"
 rust-version = "1.89"
 
+[workspace.lints.rust]
+warnings = "deny"
+
+[workspace.lints.clippy]
+all = "deny"
+
 [workspace.dependencies]
 clap = { version = "4.6", features = ["derive"] }
 notify = "8.2"
