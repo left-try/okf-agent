@@ -46,6 +46,9 @@ pub struct DoctorReport {
 pub trait GitPort {
     fn changed_files(&self, root: &Path) -> Vec<String>;
     fn git_dir(&self, root: &Path) -> Option<std::path::PathBuf>;
+    fn diff(&self, _root: &Path) -> String {
+        String::new()
+    }
     fn has_git(&self, root: &Path) -> bool {
         self.git_dir(root).is_some()
     }
@@ -63,6 +66,12 @@ pub trait LifecycleFs {
     fn validate_files(&self, root: &Path) -> Result<ValidationReport, Diagnostic>;
     fn facts_are_current(&self, _root: &Path, _facts: &DetectedFacts) -> Result<bool, Diagnostic> {
         Ok(true)
+    }
+    fn load_boundaries(
+        &self,
+        _root: &Path,
+    ) -> Result<Vec<okf_domain::gate::BoundaryRule>, Diagnostic> {
+        Ok(Vec::new())
     }
     fn record_decision(
         &self,
@@ -164,6 +173,20 @@ pub fn validate(
             .warnings
             .push("Generated facts freshness could not be checked".to_owned()),
         Ok(true) => {}
+    }
+    if let Ok(indexed) = index.indexed_content(root)
+        && let Ok(rules) = fs.load_boundaries(root)
+        && !rules.is_empty()
+    {
+        let edges: Vec<(String, String)> = indexed
+            .edges
+            .into_iter()
+            .map(|e| (e.source, e.target))
+            .collect();
+        let violations = okf_domain::gate::check_boundaries(&rules, &edges);
+        for v in violations {
+            report.errors.push(v);
+        }
     }
     report.ok = report.errors.is_empty();
     Ok(report)

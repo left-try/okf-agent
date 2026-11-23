@@ -5,11 +5,11 @@ use okf_domain::{
     paths::RepoPath,
 };
 
-pub const PROTOCOL: &str = "## OKF Repository Protocol\n\nBefore planning or editing, run `okf-agent index .` when the index is absent, then retrieve repository context. After source changes, run `okf-agent update . --changed-files <changed paths>`. Before completion, run `okf-agent validate .`. Preserve curated content outside OKF-generated blocks.\n";
+pub const PROTOCOL: &str = "## OKF Repository Protocol\n\nBefore planning or editing, run `okf-agent index .` when the index is absent, then retrieve repository context. After source changes, run `okf-agent update . --changed-files <changed paths>`. Before completion, run `okf-agent validate .` and `okf-agent gate .`. Preserve curated content outside OKF-generated blocks.\n";
 const CURSOR_RULE: &str = "---\ndescription: Maintain OKF repository knowledge before and after every coding task.\nalwaysApply: true\n---\n\n";
 const WORKFLOW_START: &str = "<!-- okf:workflow:start -->";
 const WORKFLOW_END: &str = "<!-- okf:workflow:end -->";
-const WORKFLOW_ROUTING: &str = "<!-- okf:workflow:start -->\n## OKF Workflow Routing\n\nRead `.okf/workflows/active.md` when present. Classify the task and assess risk, then load only the selected workflow profile and assigned role instructions. Use independent GTDD only when separate role contexts and controlled handoffs are available; otherwise report a single-agent adversarial review.\n<!-- okf:workflow:end -->";
+const WORKFLOW_ROUTING: &str = "<!-- okf:workflow:start -->\n## OKF Workflow Routing\n\nRead `.okf/workflows/active.md` when present. Classify the task and assess risk, then load only the selected workflow profile and assigned role instructions. Follow strict workflow requirements: SDD contracts with ADR, interfaces, Mermaid diagrams, and Call Trace; TDD Red-Green verification; and cognitive debt gates (`okf-agent gate`). Use independent GTDD only when separate role contexts and controlled handoffs are available; otherwise report a single-agent adversarial review.\n<!-- okf:workflow:end -->";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct InstallReport {

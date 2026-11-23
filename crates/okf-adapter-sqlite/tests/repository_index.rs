@@ -176,3 +176,72 @@ fn rebuild_rejects_an_index_directory_symlink_that_escapes_the_repository() {
     assert!(error.to_string().contains("outside the repository root"));
     assert!(!outside.0.join("knowledge.sqlite3").exists());
 }
+
+#[test]
+fn rebuild_indexes_go_rust_and_ts_symbols_and_imports() {
+    let scratch = Scratch::new();
+    let store = SqliteIndexStore;
+    let docs = [
+        SourceDocument {
+            path: "server.go".into(),
+            content: "package main\nimport (\n\t\"fmt\"\n\t\"net/http\"\n)\nimport \"os\"\nfunc (s *Server) HandleReq() {}\nfunc FreeFunc() {}\n".into(),
+        },
+        SourceDocument {
+            path: "lib.rs".into(),
+            content: "use crate::model;\nuse serde::Deserialize;\nenum Color { Red }\ntrait Worker {}\nimpl Worker for Service {}\nfn compute() {}\n".into(),
+        },
+        SourceDocument {
+            path: "client.ts".into(),
+            content: "import { api } from './api';\nexport { helper } from './helper';\nexport function run() {}\n".into(),
+        },
+    ];
+
+    let report = store.rebuild(&scratch.0, &docs).unwrap();
+    assert_eq!(report.files, 3);
+
+    let indexed = store.indexed_content(&scratch.0).unwrap();
+    let symbol_names: Vec<_> = indexed.symbols.iter().map(|s| s.name.as_str()).collect();
+    assert!(
+        symbol_names.contains(&"HandleReq"),
+        "symbols: {symbol_names:?}"
+    );
+    assert!(
+        symbol_names.contains(&"FreeFunc"),
+        "symbols: {symbol_names:?}"
+    );
+    assert!(symbol_names.contains(&"Color"), "symbols: {symbol_names:?}");
+    assert!(
+        symbol_names.contains(&"Worker"),
+        "symbols: {symbol_names:?}"
+    );
+    assert!(
+        symbol_names.contains(&"Service"),
+        "symbols: {symbol_names:?}"
+    );
+    assert!(
+        symbol_names.contains(&"compute"),
+        "symbols: {symbol_names:?}"
+    );
+    assert!(symbol_names.contains(&"run"), "symbols: {symbol_names:?}");
+
+    let edge_targets: Vec<_> = indexed.edges.iter().map(|e| e.target.as_str()).collect();
+    assert!(edge_targets.contains(&"fmt"), "edges: {edge_targets:?}");
+    assert!(
+        edge_targets.contains(&"net/http"),
+        "edges: {edge_targets:?}"
+    );
+    assert!(edge_targets.contains(&"os"), "edges: {edge_targets:?}");
+    assert!(
+        edge_targets.contains(&"crate::model"),
+        "edges: {edge_targets:?}"
+    );
+    assert!(
+        edge_targets.contains(&"serde::Deserialize"),
+        "edges: {edge_targets:?}"
+    );
+    assert!(edge_targets.contains(&"./api"), "edges: {edge_targets:?}");
+    assert!(
+        edge_targets.contains(&"./helper"),
+        "edges: {edge_targets:?}"
+    );
+}

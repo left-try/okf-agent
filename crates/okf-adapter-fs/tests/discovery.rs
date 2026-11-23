@@ -45,11 +45,15 @@ fn discovers_rust_and_manifests_in_sorted_order_and_skips_generated_directories(
         "venv",
         "dist",
         "build",
+        "target",
+        "coverage",
+        "playwright-report",
         "__pycache__",
     ] {
         fs::create_dir_all(scratch.0.join(dir)).unwrap();
         fs::write(scratch.0.join(dir).join("hidden.py"), "def hidden(): pass").unwrap();
     }
+    fs::write(scratch.0.join("ui.slint"), "export component App {}").unwrap();
 
     let catalog = FsSourceCatalog;
     let documents = catalog.discover(&scratch.0).unwrap();
@@ -58,7 +62,7 @@ fn discovers_rust_and_manifests_in_sorted_order_and_skips_generated_directories(
             .iter()
             .map(|doc| doc.path.as_str())
             .collect::<Vec<_>>(),
-        ["Cargo.toml", "a.py", "z.rs"]
+        ["Cargo.toml", "a.py", "ui.slint", "z.rs"]
     );
     let facts = catalog.detect(&scratch.0).unwrap();
     assert_eq!(facts.languages, ["Rust"]);

@@ -1,0 +1,19 @@
+rules:
+  - from: "crates/okf-domain"
+    disallow:
+      - "okf_application"
+      - "okf_adapter_fs"
+      - "okf_adapter_git"
+      - "okf_adapter_mcp"
+      - "okf_adapter_sqlite"
+      - "okf_cli"
+  - from: "crates/okf-application"
+    disallow:
+      - "okf_adapter_fs"
+      - "okf_adapter_git"
+      - "okf_adapter_mcp"
+      - "okf_adapter_sqlite"
+      - "okf_cli"
+  - from: "crates/okf-adapter"
+    disallow:
+      - "okf_cli"

@@ -13,10 +13,13 @@ const SKIP: &[&str] = &[
     "venv",
     "dist",
     "build",
+    "target",
+    "coverage",
+    "playwright-report",
     "__pycache__",
 ];
 const SUFFIXES: &[&str] = &[
-    "dart", "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php",
+    "dart", "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php", "slint",
 ];
 const MANIFESTS: &[&str] = &[
     "pubspec.yaml",

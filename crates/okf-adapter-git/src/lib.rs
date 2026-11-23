@@ -1,3 +1,4 @@
+#![deny(warnings)]
 //! Git repository discovery adapter.
 
 use std::{
@@ -17,6 +18,9 @@ impl okf_application::lifecycle::GitPort for Git {
     }
     fn git_dir(&self, root: &Path) -> Option<PathBuf> {
         git_dir(root).ok()
+    }
+    fn diff(&self, root: &Path) -> String {
+        repo_diff(root)
     }
 }
 
@@ -78,4 +82,47 @@ pub fn changed_files(root: &Path) -> Vec<String> {
         }
     }
     changed.into_iter().collect()
+}
+
+pub fn repo_diff(root: &Path) -> String {
+    let mut diff = String::new();
+    for args in [
+        ["diff", "HEAD", "--"].as_slice(),
+        ["diff", "--cached", "--"].as_slice(),
+    ] {
+        if let Ok(output) = Command::new("git").args(args).current_dir(root).output()
+            && output.status.success()
+        {
+            let text = String::from_utf8_lossy(&output.stdout);
+            if !text.is_empty() && !diff.contains(text.trim()) {
+                diff.push_str(&text);
+                diff.push('\n');
+            }
+        }
+    }
+    if let Ok(output) = Command::new("git")
+        .args(["ls-files", "--others", "--exclude-standard", "--"])
+        .current_dir(root)
+        .output()
+        && output.status.success()
+    {
+        for line in String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter(|l| !l.is_empty())
+        {
+            let file_path = root.join(line);
+            if let Ok(content) = std::fs::read_to_string(&file_path) {
+                diff.push_str(&format!(
+                    "\ndiff --git a/{line} b/{line}\n--- /dev/null\n+++ b/{line}\n@@ -0,0 +1,{} @@\n",
+                    content.lines().count()
+                ));
+                for l in content.lines() {
+                    diff.push('+');
+                    diff.push_str(l);
+                    diff.push('\n');
+                }
+            }
+        }
+    }
+    diff
 }

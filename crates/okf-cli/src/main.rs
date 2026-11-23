@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 mod commands;
 
 use clap::Parser;

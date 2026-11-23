@@ -15,13 +15,22 @@ use regex::Regex;
 use rusqlite::{Connection, params};
 
 static SYMBOL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?:def|class|function|interface|type|func|struct)\s+([A-Za-z_]\w*)")
-        .expect("valid symbol regex")
+    Regex::new(
+        r#"(?m)(?:(?:pub(?:\([^)]+\))?\s+|export\s+(?:default\s+)?)?(?:def|class|function|interface|type|struct|enum|trait|fn)\s+|(?:func\s+(?:\([^)]+\)\s+)?)|(?:impl(?:\s+[A-Za-z_]\w*\s+for)?\s+))([A-Za-z_]\w*)"#,
+    )
+    .expect("valid symbol regex")
 });
 static IMPORT_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(?:from\s+([\w.]+)|import\s+([\w./-]+)|require\(['"]([^'"]+))"#)
-        .expect("valid import regex")
+    Regex::new(
+        r#"(?m)(?:from\s+([\w.]+)|(?:import|export)\s+(?:(?:(?:\*|\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+)?['"]([^'"]+)['"]|([\w./-]+))|require\(['"]([^'"]+)['"]\)|use\s+((?:crate|[A-Za-z_]\w*)(?:::[A-Za-z_]\w*)*))"#,
+    )
+    .expect("valid import regex")
 });
+static GO_MULTILINE_IMPORT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?s)import\s*\((.*?)\)"#).expect("valid go multiline import regex")
+});
+static GO_IMPORT_ENTRY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"["']([^"']+)["']"#).expect("valid go import entry regex"));
 
 #[derive(Default)]
 pub struct SqliteIndexStore;
@@ -66,15 +75,25 @@ impl IndexStore for SqliteIndexStore {
                 symbol_count += 1;
             }
             for captures in IMPORT_PATTERN.captures_iter(&document.content) {
-                if let Some(target) = (1..=3)
-                    .find_map(|index| captures.get(index))
-                    .map(|capture| capture.as_str())
-                {
+                if let Some(target) = captures.iter().skip(1).flatten().next().map(|c| c.as_str()) {
                     tx.execute(
                         "INSERT OR IGNORE INTO edges(source,target,kind) VALUES (?,?,'import')",
                         params![document.path, target],
                     )
                     .map_err(|error| db_error(&path, error))?;
+                }
+            }
+            for block in GO_MULTILINE_IMPORT.captures_iter(&document.content) {
+                if let Some(body) = block.get(1) {
+                    for entry in GO_IMPORT_ENTRY.captures_iter(body.as_str()) {
+                        if let Some(target) = entry.get(1) {
+                            tx.execute(
+                                "INSERT OR IGNORE INTO edges(source,target,kind) VALUES (?,?,'import')",
+                                params![document.path, target.as_str()],
+                            )
+                            .map_err(|error| db_error(&path, error))?;
+                        }
+                    }
                 }
             }
         }
