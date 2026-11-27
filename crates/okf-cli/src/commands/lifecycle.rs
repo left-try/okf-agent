@@ -84,7 +84,7 @@ pub struct RecordDecisionArgs {
     pub path: PathBuf,
     #[arg(long)]
     pub title: String,
-    #[arg(long)]
+    #[arg(long, visible_alias = "summary")]
     pub rationale: String,
     #[arg(long = "source")]
     pub sources: Vec<String>,

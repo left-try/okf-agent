@@ -1,0 +1,29 @@
+name: OKF Knowledge Integrity
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Knowledge and Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run OKF Validate
+        uses: left-try/okf-agent@v0.3.0
+        with:
+          command: validate
+          args: .
+
+      - name: Run OKF Gate
+        uses: left-try/okf-agent@v0.3.0
+        with:
+          command: gate
+          args: .
