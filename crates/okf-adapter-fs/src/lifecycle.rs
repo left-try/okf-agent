@@ -219,6 +219,35 @@ impl LifecycleFs for FsLifecycle {
         Ok(rules)
     }
 
+    fn load_doc_mappings(
+        &self,
+        root: &Path,
+    ) -> Result<Vec<okf_domain::gate::DocMapping>, Diagnostic> {
+        let boundaries_yaml = root.join(".okf/boundaries.yaml");
+        let manifest_yaml = root.join(".okf/manifest.yaml");
+        let mut mappings = Vec::new();
+
+        if boundaries_yaml.is_file() {
+            let text = fs::read_to_string(&boundaries_yaml).map_err(|e| {
+                Diagnostic::new(ErrorKind::Io, e.to_string()).at_path(".okf/boundaries.yaml")
+            })?;
+            if let Ok(config) = serde_saphyr::from_str::<okf_domain::gate::BoundariesConfig>(&text)
+            {
+                mappings.extend(config.doc_mappings);
+            }
+        }
+        if manifest_yaml.is_file() {
+            let text = fs::read_to_string(&manifest_yaml).map_err(|e| {
+                Diagnostic::new(ErrorKind::Io, e.to_string()).at_path(".okf/manifest.yaml")
+            })?;
+            if let Ok(config) = serde_saphyr::from_str::<okf_domain::gate::BoundariesConfig>(&text)
+            {
+                mappings.extend(config.doc_mappings);
+            }
+        }
+        Ok(mappings)
+    }
+
     fn record_decision(
         &self,
         root: &Path,
