@@ -3,5 +3,6 @@
 
 pub mod diagnostics;
 pub mod gate;
+pub mod graph;
 pub mod paths;
 pub mod workflow;

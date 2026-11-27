@@ -9,6 +9,7 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+petgraph = { workspace = true }
 serde.workspace = true
 
 [dev-dependencies]
