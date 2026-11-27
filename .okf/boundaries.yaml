@@ -17,3 +17,13 @@ rules:
   - from: "crates/okf-adapter"
     disallow:
       - "okf_cli"
+
+doc_mappings:
+  - code: "crates/okf-domain/**"
+    doc: ".okf/application/overview.md"
+  - code: "crates/okf-application/**"
+    doc: ".okf/application/overview.md"
+  - code: "crates/okf-adapter-sqlite/**"
+    doc: ".okf/architecture/index.md"
+  - code: "crates/okf-cli/**"
+    doc: ".okf/operations/development.md"

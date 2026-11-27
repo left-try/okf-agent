@@ -1,0 +1,26 @@
+# Pre-commit configuration for OKF repository knowledge maintenance
+# See https://pre-commit.com for more information
+
+repos:
+  - repo: local
+    hooks:
+      - id: okf-update
+        name: OKF Knowledge Update
+        entry: okf-agent update . --changed-files
+        language: system
+        pass_filenames: true
+        stages: [pre-commit]
+
+      - id: okf-validate
+        name: OKF Knowledge Validation
+        entry: okf-agent validate .
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: okf-gate
+        name: OKF Quality & Cognitive Debt Gate
+        entry: okf-agent gate .
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

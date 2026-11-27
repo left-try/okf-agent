@@ -1,0 +1,85 @@
+name: "OKF Agent GitHub Action"
+description: "Installs okf-agent and runs repository knowledge maintenance and validation checks."
+author: "left-try"
+
+inputs:
+  version:
+    description: "Version tag of okf-agent to install (e.g., 'v0.3.1', or 'latest')"
+    required: false
+    default: "v0.3.1"
+  command:
+    description: "Command to execute (e.g., 'validate', 'gate', 'index', 'docs check', or empty string to only install)"
+    required: false
+    default: "validate"
+  args:
+    description: "Arguments to pass to the command"
+    required: false
+    default: "."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download & Install okf-agent binary
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [ "$VERSION" = "latest" ]; then
+          VERSION="v0.3.1"
+        fi
+
+        OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        ARCH="$(uname -m)"
+
+        TARGET=""
+        EXT="tar.gz"
+
+        case "$OS" in
+          linux*)
+            if [ "$ARCH" = "x86_64" ]; then
+              TARGET="x86_64-unknown-linux-gnu"
+            fi
+            ;;
+          darwin*)
+            if [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then
+              TARGET="aarch64-apple-darwin"
+            fi
+            ;;
+          msys*|mingw*|cygwin*)
+            if [ "$ARCH" = "x86_64" ]; then
+              TARGET="x86_64-pc-windows-msvc"
+              EXT="zip"
+            fi
+            ;;
+        esac
+
+        INSTALL_DIR="$HOME/.okf-bin"
+        mkdir -p "$INSTALL_DIR"
+        echo "$INSTALL_DIR" >> $GITHUB_PATH
+
+        INSTALLED=false
+        if [ -n "$TARGET" ]; then
+          URL="https://github.com/left-try/okf-agent/releases/download/${VERSION}/okf-agent-${TARGET}.${EXT}"
+          echo "Attempting to download prebuilt binary: $URL"
+          if curl -sSL -f "$URL" -o "archive.${EXT}"; then
+            if [ "$EXT" = "zip" ]; then
+              unzip -q -o "archive.${EXT}" -d "$INSTALL_DIR"
+            else
+              tar -xzf "archive.${EXT}" -C "$INSTALL_DIR"
+            fi
+            chmod +x "$INSTALL_DIR"/okf-agent* || true
+            INSTALLED=true
+          else
+            echo "Prebuilt binary download failed; falling back to cargo install..."
+          fi
+        fi
+
+        if [ "$INSTALLED" = "false" ]; then
+          cargo install --git https://github.com/left-try/okf-agent.git --tag "$VERSION" --locked --bin okf-agent --root "$HOME/.cargo-okf"
+          echo "$HOME/.cargo-okf/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Execute okf-agent command
+      if: ${{ inputs.command != '' }}
+      shell: bash
+      run: |
+        okf-agent ${{ inputs.command }} ${{ inputs.args }}
