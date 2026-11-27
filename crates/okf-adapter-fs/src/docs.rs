@@ -20,7 +20,21 @@ struct Manifest {
 }
 
 fn digest(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn digest_uses_lowercase_sha256_hex() {
+        assert_eq!(
+            super::digest(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
 }
 fn io(path: &Path, error: std::io::Error) -> Diagnostic {
     Diagnostic::new(ErrorKind::Io, error.to_string()).at_path(path.to_string_lossy().to_string())
