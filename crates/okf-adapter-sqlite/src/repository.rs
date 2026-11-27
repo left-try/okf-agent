@@ -340,46 +340,46 @@ fn parse_rust_treesitter(content: &str) -> Option<(Vec<String>, Vec<String>)> {
     for child in root.children(&mut cursor) {
         match child.kind() {
             "function_item" | "struct_item" | "enum_item" | "trait_item" | "type_item" => {
-                if let Some(name_node) = child.child_by_field_name("name") {
-                    if let Ok(name) = name_node.utf8_text(bytes) {
-                        symbols.push(name.to_string());
-                    }
+                if let Some(name_node) = child.child_by_field_name("name")
+                    && let Ok(name) = name_node.utf8_text(bytes)
+                {
+                    symbols.push(name.to_string());
                 }
             }
             "mod_item" => {
-                if let Some(name_node) = child.child_by_field_name("name") {
-                    if let Ok(name) = name_node.utf8_text(bytes) {
-                        symbols.push(name.to_string());
-                        // If it's a module declaration (`mod foo;`), it acts as an import/submodule edge
-                        if child.child_by_field_name("body").is_none() {
-                            edges.push(name.to_string());
-                        }
+                if let Some(name_node) = child.child_by_field_name("name")
+                    && let Ok(name) = name_node.utf8_text(bytes)
+                {
+                    symbols.push(name.to_string());
+                    // If it's a module declaration (`mod foo;`), it acts as an import/submodule edge
+                    if child.child_by_field_name("body").is_none() {
+                        edges.push(name.to_string());
                     }
                 }
             }
             "impl_item" => {
-                if let Some(type_node) = child.child_by_field_name("type") {
-                    if let Ok(type_name) = type_node.utf8_text(bytes) {
-                        // Take primary ident of the type
-                        let clean = type_name.split('<').next().unwrap_or(type_name).trim();
-                        if !clean.is_empty() {
-                            symbols.push(clean.to_string());
-                        }
+                if let Some(type_node) = child.child_by_field_name("type")
+                    && let Ok(type_name) = type_node.utf8_text(bytes)
+                {
+                    // Take primary ident of the type
+                    let clean = type_name.split('<').next().unwrap_or(type_name).trim();
+                    if !clean.is_empty() {
+                        symbols.push(clean.to_string());
                     }
                 }
             }
             "use_declaration" => {
-                if let Some(arg) = child.child_by_field_name("argument") {
-                    if let Ok(path_text) = arg.utf8_text(bytes) {
-                        let clean = path_text
-                            .split('{')
-                            .next()
-                            .unwrap_or(path_text)
-                            .trim()
-                            .trim_end_matches(':');
-                        if !clean.is_empty() {
-                            edges.push(clean.to_string());
-                        }
+                if let Some(arg) = child.child_by_field_name("argument")
+                    && let Ok(path_text) = arg.utf8_text(bytes)
+                {
+                    let clean = path_text
+                        .split('{')
+                        .next()
+                        .unwrap_or(path_text)
+                        .trim()
+                        .trim_end_matches(':');
+                    if !clean.is_empty() {
+                        edges.push(clean.to_string());
                     }
                 }
             }
