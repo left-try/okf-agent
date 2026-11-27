@@ -17,13 +17,13 @@ jobs:
           fetch-depth: 0
 
       - name: Run OKF Validate
-        uses: left-try/okf-agent@v0.3.0
+        uses: left-try/okf-agent@v0.3.2
         with:
           command: validate
           args: .
 
       - name: Run OKF Gate
-        uses: left-try/okf-agent@v0.3.0
+        uses: left-try/okf-agent@v0.3.2
         with:
           command: gate
           args: .

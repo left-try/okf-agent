@@ -28,7 +28,7 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Build OKF Documentation Wiki
-        uses: left-try/okf-agent@v0.3.0
+        uses: left-try/okf-agent@v0.3.2
         with:
           command: docs build
           args: . --output ./_site
