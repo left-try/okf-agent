@@ -100,9 +100,7 @@ pub fn initialize(
     let created = fs.initialize_files(root, profiles)?;
     let index_report = repository_index::build(root, catalog, index)?;
     let facts = catalog.detect(root)?;
-    let mut changed = git.changed_files(root);
-    changed.retain(|path| !is_excluded_from_changes(root, path));
-    refresh_generated(root, &changed, &facts, fs)?;
+    refresh_generated(root, &facts, fs)?;
     let git_dir = git.git_dir(root);
     let installed = fs.install_adapters(root, git_dir.as_deref(), !profiles.is_empty())?;
     Ok(InitReport {
@@ -128,7 +126,7 @@ pub fn update(
         .unwrap_or_else(|| git.changed_files(root));
     changed_files.retain(|path| !is_excluded_from_changes(root, path));
     let facts = catalog.detect(root)?;
-    refresh_generated(root, &changed_files, &facts, fs)?;
+    refresh_generated(root, &facts, fs)?;
     let index = repository_index::build(root, catalog, index)?;
     Ok(UpdateReport {
         changed_files,
@@ -229,7 +227,6 @@ pub fn install_codex_skill(
 
 fn refresh_generated(
     root: &Path,
-    changed: &[String],
     facts: &DetectedFacts,
     fs: &impl LifecycleFs,
 ) -> Result<(), Diagnostic> {
@@ -258,19 +255,10 @@ fn refresh_generated(
         ".okf/architecture/index.md",
         &format!("## Generated facts\n- Manifests: {manifests}"),
     )?;
-    let files = if changed.is_empty() {
-        "- No Git diff detected".to_owned()
-    } else {
-        changed
-            .iter()
-            .map(|path| format!("- `{path}`"))
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
     fs.replace_generated(
         root,
         ".okf/changes/current.md",
-        &format!("Changed files:\n{files}"),
+        "Current changed files are reported by `okf-agent update`.",
     )?;
     Ok(())
 }

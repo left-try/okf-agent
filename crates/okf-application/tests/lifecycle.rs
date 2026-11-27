@@ -120,7 +120,9 @@ fn initialize_and_update_refresh_generated_facts_and_index_through_ports() {
             .lock()
             .unwrap()
             .iter()
-            .any(|(path, body)| path == ".okf/changes/current.md" && body.contains("README.md"))
+            .any(|(path, body)| path == ".okf/changes/current.md"
+                && body.contains("okf-agent update")
+                && !body.contains("README.md"))
     );
 }
 
@@ -167,9 +169,8 @@ fn update_excludes_current_md_and_generated_docs_from_changed_files() {
             .unwrap()
             .iter()
             .any(|(path, body)| path == ".okf/changes/current.md"
-                && body.contains("src/lib.rs")
-                && !body.contains("docs/reference")
-                && !body.contains(".okf/changes/current.md"))
+                && !body.contains("src/lib.rs")
+                && !body.contains("docs/reference"))
     );
 
     let _ = std::fs::remove_dir_all(&root);

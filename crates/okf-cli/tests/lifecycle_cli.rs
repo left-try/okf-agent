@@ -52,6 +52,18 @@ fn update_then_validate_refreshes_repository_files_and_index() {
     assert_eq!(result["changed_files"][0], "main.rs");
     assert_eq!(result["facts"]["languages"][0], "Rust");
     assert!(scratch.0.join(".okf/changes/current.md").is_file());
+    let current = scratch.0.join(".okf/changes/current.md");
+    let first = fs::read_to_string(&current).unwrap();
+    fs::write(&current, format!("{first}\nCurated note.\n")).unwrap();
+    assert!(
+        run(&["update", root, "--changed-files", "other.rs"])
+            .status
+            .success()
+    );
+    assert_eq!(
+        fs::read_to_string(&current).unwrap(),
+        format!("{first}\nCurated note.\n")
+    );
     assert!(scratch.0.join(".okf-index/knowledge.sqlite3").is_file());
     let validate = run(&["validate", root]);
     assert!(

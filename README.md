@@ -68,7 +68,7 @@ okf-agent docs build .
 okf-agent docs check .
 ```
 
-`okf-agent update .` refreshes repository facts and the SQLite index. If the local wiki has already been created, `update` rebuilds it too. `okf-agent validate .` checks for stale wiki output, and the generated pre-push hook runs validation. A stale or corrupted generated site makes validation fail; rebuild it with `okf-agent docs build .`.
+`okf-agent update .` refreshes repository facts and the SQLite index. Its JSON response reports changed files from the working tree, staging area, and untracked files, or the paths supplied with `--changed-files`. Task-specific lists are not written to `.okf/changes/current.md`, so parallel branches do not conflict on generated change lists. Committed branch changes are not included unless passed explicitly. If the local wiki has already been created, `update` rebuilds it too. `okf-agent validate .` checks for stale wiki output, and the generated pre-push hook runs validation. A stale or corrupted generated site makes validation fail; rebuild it with `okf-agent docs build .`.
 
 The generated site is not published or pushed to GitHub. `.okf/` remains the source of truth. The site includes deterministic project facts and mirrors curated Markdown pages; it does not invent architectural explanations.
 

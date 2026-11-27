@@ -1,6 +1,5 @@
 # Current
 
 <!-- okf:generated:start -->
-Changed files:
-- `crates/okf-adapter-sqlite/src/repository.rs`
+Current changed files are reported by `okf-agent update`.
 <!-- okf:generated:end -->

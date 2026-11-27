@@ -4,9 +4,9 @@ author: "left-try"
 
 inputs:
   version:
-    description: "Version tag of okf-agent to install (e.g., 'v0.3.1', or 'latest')"
+    description: "Version tag of okf-agent to install (e.g., 'v0.3.2', or 'latest')"
     required: false
-    default: "v0.3.1"
+    default: "v0.3.2"
   command:
     description: "Command to execute (e.g., 'validate', 'gate', 'index', 'docs check', or empty string to only install)"
     required: false
@@ -24,7 +24,7 @@ runs:
       run: |
         VERSION="${{ inputs.version }}"
         if [ "$VERSION" = "latest" ]; then
-          VERSION="v0.3.1"
+          VERSION="v0.3.2"
         fi
 
         OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
