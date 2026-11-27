@@ -103,3 +103,62 @@ fn markdown_routes_reject_traversal_and_symlink_escapes() {
     assert!(okf_adapter_fs::web::resolve_route(&output, "/%5csecret.md", &allowed).is_none());
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn code_map_emits_valid_relative_links_and_includes_slint_and_dart() {
+    let root = temp();
+    fs::write(root.join(".okf/manifest.yaml"), "schema_version: 1\n").unwrap();
+    let indexed = IndexedContent {
+        documents: vec![
+            okf_application::repository_index::IndexedDocument {
+                path: "crates/app/src/lib.rs".into(),
+                content: "pub fn run() {}".into(),
+            },
+            okf_application::repository_index::IndexedDocument {
+                path: "ui/window.slint".into(),
+                content: "export component AppWindow {}".into(),
+            },
+            okf_application::repository_index::IndexedDocument {
+                path: "lib/main.dart".into(),
+                content: "void main() {}".into(),
+            },
+        ],
+        symbols: vec![
+            okf_application::repository_index::IndexedSymbol {
+                name: "run".into(),
+                path: "crates/app/src/lib.rs".into(),
+            },
+            okf_application::repository_index::IndexedSymbol {
+                name: "AppWindow".into(),
+                path: "ui/window.slint".into(),
+            },
+        ],
+        edges: vec![okf_application::repository_index::ImportEdge {
+            source: "crates/app/src/lib.rs".into(),
+            target: "stovo_domain".into(),
+            kind: "import".into(),
+        }],
+    };
+
+    let custom_output = root.join("docs/reference");
+    build(&root, Some(&custom_output), &indexed, &Catalog).unwrap();
+
+    let code_map_content = fs::read_to_string(custom_output.join("code-map.md")).unwrap();
+
+    // Verify .slint and .dart are included in code-map.md (Issue 37)
+    assert!(code_map_content.contains("ui/window.slint"));
+    assert!(code_map_content.contains("lib/main.dart"));
+
+    // Verify relative paths resolve back to repo root (Issue 40)
+    assert!(code_map_content.contains("[`crates/app/src/lib.rs`](../../crates/app/src/lib.rs)"));
+    assert!(code_map_content.contains("[`ui/window.slint`](../../ui/window.slint)"));
+    assert!(code_map_content.contains("[`lib/main.dart`](../../lib/main.dart)"));
+    assert!(
+        code_map_content.contains("[`crates/app/src/lib.rs`](../../crates/app/src/lib.rs): `run`")
+    );
+    assert!(code_map_content.contains(
+        "[`crates/app/src/lib.rs`](../../crates/app/src/lib.rs) → `stovo_domain` (import)"
+    ));
+
+    fs::remove_dir_all(root).unwrap();
+}
