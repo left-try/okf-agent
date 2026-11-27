@@ -8,11 +8,19 @@ pub struct BoundaryRule {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct DocMapping {
+    pub code: String,
+    pub doc: String,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BoundariesConfig {
     #[serde(default)]
     pub rules: Vec<BoundaryRule>,
     #[serde(default)]
     pub boundaries: Vec<BoundaryRule>,
+    #[serde(default)]
+    pub doc_mappings: Vec<DocMapping>,
 }
 
 impl BoundariesConfig {
@@ -230,4 +238,38 @@ fn find_escape_hatch(line: &str) -> Option<&'static str> {
     ]
     .into_iter()
     .find(|&hatch| line.contains(hatch))
+}
+
+pub fn check_doc_drift(mappings: &[DocMapping], changed_files: &[String]) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let normalized_changed: Vec<String> =
+        changed_files.iter().map(|f| f.replace('\\', "/")).collect();
+
+    for mapping in mappings {
+        let code_pattern = mapping.code.replace('\\', "/");
+        let doc_target = mapping.doc.replace('\\', "/");
+
+        let code_matched = normalized_changed.iter().any(|file| {
+            if code_pattern.ends_with("/**") {
+                let prefix = &code_pattern[..code_pattern.len() - 3];
+                file.starts_with(prefix) || file == prefix
+            } else if code_pattern.ends_with("/*") {
+                let prefix = &code_pattern[..code_pattern.len() - 2];
+                file.starts_with(prefix)
+            } else {
+                file == &code_pattern || file.starts_with(&format!("{code_pattern}/"))
+            }
+        });
+
+        if code_matched {
+            let doc_updated = normalized_changed.iter().any(|file| file == &doc_target);
+            if !doc_updated {
+                warnings.push(format!(
+                    "Documentation drift detected: '{}' was modified but corresponding doc '{}' was not updated",
+                    mapping.code, mapping.doc
+                ));
+            }
+        }
+    }
+    warnings
 }
