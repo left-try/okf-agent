@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
 };
 
 use okf_application::docs::{CheckReport, DocsPort, DocsReport};
@@ -38,36 +38,13 @@ fn has_symlink_component(root: &Path, relative: &Path) -> bool {
 }
 
 pub fn output_path(root: &Path, output: Option<&Path>) -> Result<PathBuf, Diagnostic> {
-    let root = root.canonicalize().map_err(|e| io(root, e))?;
-    let candidate = output
-        .map(|p| {
-            if p.is_absolute() {
-                p.to_path_buf()
-            } else {
-                root.join(p)
-            }
-        })
-        .unwrap_or_else(|| root.join(".okf-index/site"));
-    let candidate = if candidate.is_absolute() {
-        candidate
-    } else {
-        root.join(candidate)
+    let repo_path = match output {
+        Some(p) => okf_domain::paths::RepoPath::new(root, p)?,
+        None => okf_domain::paths::RepoPath::new(root, Path::new(".okf-index/site"))?,
     };
-    if candidate
-        .components()
-        .any(|component| matches!(component, Component::ParentDir))
-    {
-        return Err(Diagnostic::new(
-            ErrorKind::InvalidPath,
-            "Documentation output must stay inside the repository",
-        ));
-    }
-    let relative = candidate.strip_prefix(&root).map_err(|_| {
-        Diagnostic::new(
-            ErrorKind::InvalidPath,
-            "Documentation output must stay inside the repository",
-        )
-    })?;
+    let root = root.canonicalize().map_err(|e| io(root, e))?;
+    let candidate = root.join(repo_path.as_path());
+    let relative = repo_path.as_path();
     let mut cursor = root.clone();
     for part in relative {
         cursor.push(part);
@@ -154,7 +131,7 @@ fn facts_page(root: &Path, facts: &DetectedFacts) -> String {
         list(&facts.manifests, "none")
     )
 }
-fn code_map(indexed: &IndexedContent) -> String {
+fn code_map(indexed: &IndexedContent, root_prefix: &str) -> String {
     let mut out = String::from("# Code Map\n\n## Indexed source files\n\n");
     let docs: Vec<_> = indexed
         .documents
@@ -162,7 +139,8 @@ fn code_map(indexed: &IndexedContent) -> String {
         .filter(|d| {
             Path::new(&d.path).extension().is_some_and(|e| {
                 [
-                    "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php",
+                    "dart", "py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "cs", "rb", "php",
+                    "slint",
                 ]
                 .contains(&e.to_string_lossy().as_ref())
             })
@@ -172,7 +150,7 @@ fn code_map(indexed: &IndexedContent) -> String {
         out.push_str("No indexed source files were found.\n")
     } else {
         for d in docs {
-            out.push_str(&format!("- [`{}`]({})\n", d.path, d.path));
+            out.push_str(&format!("- [`{}`]({}{})\n", d.path, root_prefix, d.path));
         }
     }
     out.push_str("\n## Indexed symbols\n\n");
@@ -180,7 +158,10 @@ fn code_map(indexed: &IndexedContent) -> String {
         out.push_str("No indexed symbols were found.\n")
     } else {
         for s in &indexed.symbols {
-            out.push_str(&format!("- [`{}`]({}): `{}`\n", s.path, s.path, s.name));
+            out.push_str(&format!(
+                "- [`{}`]({}{}): `{}`\n",
+                s.path, root_prefix, s.path, s.name
+            ));
         }
     }
     out.push_str("\n## Indexed import edges\n\n");
@@ -189,8 +170,8 @@ fn code_map(indexed: &IndexedContent) -> String {
     } else {
         for e in &indexed.edges {
             out.push_str(&format!(
-                "- [`{}`]({}) → `{}` ({})\n",
-                e.source, e.source, e.target, e.kind
+                "- [`{}`]({}{}) → `{}` ({})\n",
+                e.source, root_prefix, e.source, e.target, e.kind
             ));
         }
     }
@@ -230,7 +211,17 @@ pub fn build(
         "repository.md".into(),
         facts_page(&root, &catalog.detect(&root)?).into_bytes(),
     );
-    generated.insert("code-map.md".into(), code_map(indexed).into_bytes());
+    let rel_target = target.strip_prefix(&root).unwrap_or(Path::new(""));
+    let depth = rel_target.components().count();
+    let root_prefix = if depth == 0 {
+        String::new()
+    } else {
+        "../".repeat(depth)
+    };
+    generated.insert(
+        "code-map.md".into(),
+        code_map(indexed, &root_prefix).into_bytes(),
+    );
     for (relative, bytes) in &sources {
         if relative.ends_with(".md") {
             let page = format!("source/{relative}");
