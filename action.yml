@@ -66,6 +66,7 @@ runs:
             else
               tar -xzf "archive.${EXT}" -C "$INSTALL_DIR"
             fi
+            find "$INSTALL_DIR" -type f -name "okf-agent*" -exec cp -f {} "$INSTALL_DIR/" \; 2>/dev/null || true
             chmod +x "$INSTALL_DIR"/okf-agent* || true
             INSTALLED=true
           else
